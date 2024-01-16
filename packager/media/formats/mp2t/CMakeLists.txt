@@ -23,6 +23,9 @@ add_library(mp2t STATIC
   es_parser_h26x.cc
   es_parser_h26x.h
   es_parser.h
+  es_parser_teletext.cc
+  es_parser_teletext.h
+  es_parser_teletext_tables.h
   mp2t_media_parser.cc
   mp2t_media_parser.h
   mpeg1_header.cc
