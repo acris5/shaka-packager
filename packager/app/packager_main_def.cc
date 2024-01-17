@@ -614,7 +614,7 @@ std::optional<PackagingParams>  PackagerParamsFromJSON(const char* json_string_p
       
     }
   }
-  arguments.push_back("--stderrthreshold=0");
+  //arguments.push_back("--stderrthreshold=0");
   for (const auto& arg : arguments){
           argv.push_back((char*)arg.data());
   }
@@ -654,8 +654,8 @@ std::optional<PackagingParams>  PackagerParamsFromJSON(const char* json_string_p
     absl::SetMinLogLevel(absl::LogSeverityAtLeast::kWarning);
   }
 
-  //handle_vlog_flags();
-  absl::SetMinLogLevel(absl::LogSeverityAtLeast::kInfo);
+  handle_vlog_flags();
+  //absl::SetMinLogLevel(absl::LogSeverityAtLeast::kInfo);
   absl::InitializeLog(); 
   LOG(INFO) << "TEST INFO LOG0";
   std::cout << "TEST INFO LOG1";
