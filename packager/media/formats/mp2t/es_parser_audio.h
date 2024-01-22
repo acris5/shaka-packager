@@ -50,7 +50,7 @@ class EsParserAudio : public EsParser {
 
   // Signal any audio configuration change (if any).
   // Return false if the current audio config is not a supported audio config.
-  bool UpdateAudioConfiguration(const AudioHeader& audio_header);
+  bool UpdateAudioConfiguration(const AudioHeader& audio_header, int64_t pts);
 
   // Discard some bytes from the ES stream.
   void DiscardEs(int nbytes);

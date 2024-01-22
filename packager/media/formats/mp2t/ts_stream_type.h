@@ -32,7 +32,8 @@ enum class TsStreamType {
   // Cannot find specification for DTS-HD and DTS. They are extracted from
   // https://sno.phy.queensu.ca/~phil/exiftool/TagNames/M2TS.html.
   kAc3 = 0x81,
-  kDtsHd = 0x86,
+  //kDtsHd = 0x86,
+  kSCTE35 = 0x86,
   kEac3 = 0x87,
   kDts = 0x8A,
   // MPEG-2 Stream Encryption Format for HTTP Live Streaming:

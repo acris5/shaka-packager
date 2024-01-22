@@ -103,7 +103,6 @@ bool TsSectionPes::Parse(bool payload_unit_start_indicator,
   // Ignore partial PES.
   if (wait_for_pusi_ && !payload_unit_start_indicator)
     return true;
-
   bool parse_result = true;
   if (payload_unit_start_indicator) {
     // Try emitting a packet since we might have a pending PES packet
@@ -173,7 +172,6 @@ bool TsSectionPes::Emit(bool emit_for_unknown_size) {
     return true;
   }
   DVLOG(LOG_LEVEL_PES) << "pes_packet_length=" << pes_packet_length;
-
   // Parse the packet.
   bool parse_result = ParseInternal(raw_pes, raw_pes_size);
 
@@ -193,8 +191,12 @@ bool TsSectionPes::ParseInternal(const uint8_t* raw_pes, int raw_pes_size) {
   RCHECK(bit_reader.ReadBits(24, &packet_start_code_prefix));
   RCHECK(bit_reader.ReadBits(8, &stream_id));
   RCHECK(bit_reader.ReadBits(16, &pes_packet_length));
-
-  RCHECK(packet_start_code_prefix == kPesStartCode);
+  //RCHECK(packet_start_code_prefix == kPesStartCode);
+  if (packet_start_code_prefix != kPesStartCode){
+    //TODO: find real pts dts
+    //std::cout<<"Not a PES packet; try to parse as MPEGTS with nullable pts dts: "<<base::HexEncode(&raw_pes[2], raw_pes_size - 2)<<std::endl;
+    return es_parser_->Parse(&raw_pes[1], raw_pes_size - 1, 1, 1);
+  }
   DVLOG(LOG_LEVEL_PES) << "stream_id=" << stream_id;
   if (pes_packet_length == 0)
     pes_packet_length = static_cast<int>(bit_reader.bits_available()) / 8;
@@ -207,9 +209,13 @@ bool TsSectionPes::ParseInternal(const uint8_t* raw_pes, int raw_pes_size) {
   bool is_audio_stream_id =
       ((stream_id & 0xe0) == 0xc0) || stream_id == kPrivateStream1;
   bool is_video_stream_id = ((stream_id & 0xf0) == 0xe0);
-  if (!is_audio_stream_id && !is_video_stream_id)
-    return true;
-
+  bool is_scte35_stream_id =  (stream_id == 0xfc); 
+  //TODO: improve scte35 stream id check
+if (!is_audio_stream_id && !is_video_stream_id && !is_scte35_stream_id)
+{
+  LOG(INFO)<< "unknown stream_id: "<<stream_id<<std::endl;
+  return true;
+}
   // Read up to "pes_header_data_length".
   int dummy_2;
   int PES_scrambling_control;
@@ -304,9 +310,9 @@ bool TsSectionPes::ParseInternal(const uint8_t* raw_pes, int raw_pes_size) {
       (pes_header_start_size -
        static_cast<int>(bit_reader.bits_available()) / 8);
   RCHECK(pes_header_remaining_size >= 0);
-
+                              
   // Read the PES packet.
-  DVLOG(LOG_LEVEL_PES) << "Emit a reassembled PES:"
+ DVLOG(LOG_LEVEL_PES) << "Emit a reassembled PES:"
                        << " size=" << es_size << " pts=" << media_pts
                        << " dts=" << media_dts << " data_alignment_indicator="
                        << data_alignment_indicator;

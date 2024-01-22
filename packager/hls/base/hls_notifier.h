@@ -82,6 +82,12 @@ class HlsNotifier {
   virtual bool NotifyCueEvent(uint32_t stream_id, int64_t timestamp) = 0;
 
   /// @param stream_id is the value set by NotifyNewStream().
+  /// @param timestamp is the timestamp of the SCTE35Event.
+  /// @param duration is the duration of the SCTE35Event.
+  /// @return true on success, false otherwise.
+  virtual bool NotifySCTE35Event(int64_t timestamp, int64_t duration) = 0;
+
+  /// @param stream_id is the value set by NotifyNewStream().
   /// @param key_id is the key ID for the stream.
   /// @param system_id is the DRM system ID in e.g. PSSH boxes. For example this
   ///        can be used to determine the KEYFORMAT attribute for EXT-X-KEY.

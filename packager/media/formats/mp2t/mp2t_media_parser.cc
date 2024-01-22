@@ -13,12 +13,16 @@
 #include <packager/media/base/media_sample.h>
 #include <packager/media/base/stream_info.h>
 #include <packager/media/base/text_sample.h>
+#include <packager/media/base/timestamp.h>
+#include <packager/media/base/scte35_event.h>
+#include <packager/media/base/scte35_stream_info.h>
 #include <packager/media/formats/mp2t/es_parser.h>
 #include <packager/media/formats/mp2t/es_parser_audio.h>
 #include <packager/media/formats/mp2t/es_parser_dvb.h>
 #include <packager/media/formats/mp2t/es_parser_h264.h>
 #include <packager/media/formats/mp2t/es_parser_h265.h>
 #include <packager/media/formats/mp2t/es_parser_teletext.h>
+#include <packager/media/formats/mp2t/es_parser_scte35.h>
 #include <packager/media/formats/mp2t/mp2t_common.h>
 #include <packager/media/formats/mp2t/ts_packet.h>
 #include <packager/media/formats/mp2t/ts_section.h>
@@ -26,6 +30,7 @@
 #include <packager/media/formats/mp2t/ts_section_pes.h>
 #include <packager/media/formats/mp2t/ts_section_pmt.h>
 #include <packager/media/formats/mp2t/ts_stream_type.h>
+
 
 namespace shaka {
 namespace media {
@@ -39,6 +44,7 @@ class PidState {
     kPidAudioPes,
     kPidVideoPes,
     kPidTextPes,
+    kPidSCTE35Pes,
   };
 
   PidState(int pid,
@@ -77,7 +83,7 @@ class PidState {
 
   std::deque<std::shared_ptr<MediaSample>> media_sample_queue_;
   std::deque<std::shared_ptr<TextSample>> text_sample_queue_;
-
+  std::deque<std::shared_ptr<SCTE35Event>> scte35_event_queue_;
   bool enable_;
   int continuity_counter_;
   std::shared_ptr<StreamInfo> config_;
@@ -96,7 +102,6 @@ PidState::PidState(int pid,
 
 bool PidState::PushTsPacket(const TsPacket& ts_packet) {
   DCHECK_EQ(ts_packet.pid(), pid_);
-
   // The current PID is not part of the PID filter,
   // just discard the incoming TS packet.
   if (!enable_)
@@ -109,7 +114,6 @@ bool PidState::PushTsPacket(const TsPacket& ts_packet) {
     // TODO(tinskip): Handle discontinuity better.
     return false;
   }
-
   bool status = section_parser_->Parse(
       ts_packet.payload_unit_start_indicator(),
       ts_packet.payload(),
@@ -119,7 +123,8 @@ bool PidState::PushTsPacket(const TsPacket& ts_packet) {
   // Components that use the Mp2tMediaParser can take further action if needed.
   if (!status) {
     LOG(ERROR) << "Parsing failed for pid = " << pid_ << ", type=" << pid_type_;
-    ResetState();
+    ResetState(); 
+    //return true; //TODO: no return here, it is just for test
   }
 
   return status;
@@ -162,16 +167,20 @@ Mp2tMediaParser::~Mp2tMediaParser() {}
 void Mp2tMediaParser::Init(const InitCB& init_cb,
                            const NewMediaSampleCB& new_media_sample_cb,
                            const NewTextSampleCB& new_text_sample_cb,
+                           const NewSCTE35EventCB& new_scte35_event_cb,
                            KeySource* decryption_key_source) {
   DCHECK(!is_initialized_);
   DCHECK(init_cb_ == nullptr);
   DCHECK(init_cb != nullptr);
   DCHECK(new_media_sample_cb != nullptr);
   DCHECK(new_text_sample_cb != nullptr);
+   //TODO: add check here
+  //DCHECK(!new_scte35_event_cb != nullptr);
 
   init_cb_ = init_cb;
   new_media_sample_cb_ = new_media_sample_cb;
   new_text_sample_cb_ = new_text_sample_cb;
+  new_scte35_event_cb_ = new_scte35_event_cb;
 }
 
 bool Mp2tMediaParser::Flush() {
@@ -222,11 +231,11 @@ bool Mp2tMediaParser::Parse(const uint8_t* buf, int size) {
       ts_byte_queue_.Pop(1);
       continue;
     }
-    DVLOG(LOG_LEVEL_TS) << "Processing PID=" << ts_packet->pid()
+    /*DVLOG(LOG_LEVEL_TS) << "Processing PID=" << ts_packet->pid()
                         << " start_unit="
                         << ts_packet->payload_unit_start_indicator()
                         << " continuity_counter="
-                        << ts_packet->continuity_counter();
+                        << ts_packet->continuity_counter();*/
     // Parse the section.
     auto it = pids_.find(ts_packet->pid());
     if (it == pids_.end() &&
@@ -302,6 +311,8 @@ void Mp2tMediaParser::RegisterPes(int pmt_pid,
                                  pes_pid, std::placeholders::_1);
   auto on_emit_text = std::bind(&Mp2tMediaParser::OnEmitTextSample, this,
                                 pes_pid, std::placeholders::_1);
+  auto on_emit_scte35 = std::bind(&Mp2tMediaParser::OnEmitSCTE35Event, this,
+                                pes_pid, std::placeholders::_1);
   switch (stream_type) {
     case TsStreamType::kAvc:
       es_parser.reset(new EsParserH264(pes_pid, on_new_stream, on_emit_media));
@@ -327,14 +338,20 @@ void Mp2tMediaParser::RegisterPes(int pmt_pid,
                                       descriptor, descriptor_length));
       pid_type = PidState::kPidTextPes;
       break;
-
+    case TsStreamType::kSCTE35:
+      es_parser.reset(new EsParserSCTE35(pes_pid, on_new_stream, on_emit_text, on_emit_scte35,
+                                      descriptor, descriptor_length));
+      LOG(INFO) << "Found scte35 stream (type = 0x "
+               << std::hex << static_cast<int>(stream_type) << std::dec << ") pid: "<<pes_pid;                     
+      pid_type = PidState::kPidSCTE35Pes;
+      break;
     default: {
       auto type = static_cast<int>(stream_type);
       DCHECK(type <= 0xff);
-      LOG_IF(ERROR, !stream_type_logged_once_[type])
+      LOG_IF(ERROR, !stream_type_logged_once_[pes_pid])
           << "Ignore unsupported MPEG2TS stream type 0x" << std::hex << type
-          << std::dec;
-      stream_type_logged_once_[type] = true;
+          << ", Pid: "<< pes_pid << std::dec;
+      stream_type_logged_once_[pes_pid] = true;
       return;
     }
   }
@@ -347,6 +364,11 @@ void Mp2tMediaParser::RegisterPes(int pmt_pid,
       new PidState(pes_pid, pid_type, std::move(pes_section_parser)));
   pes_pid_state->Enable();
   pids_.emplace(pes_pid, std::move(pes_pid_state));
+  if ( stream_type == TsStreamType::kSCTE35 ){
+    //SCTE35 streams can have ts packets rarely so init as start and do not wait for its packets
+    auto info = std::make_shared<SCTE35StreamInfo>(pes_pid, kMpeg2Timescale, kInfiniteDuration, kCodecSCTE35, "", "", "");
+    on_new_stream(info);
+  }
 }
 
 void Mp2tMediaParser::OnNewStreamInfo(
@@ -389,7 +411,8 @@ bool Mp2tMediaParser::FinishInitializationIfNeeded() {
   for (const auto& pair : pids_) {
     if ((pair.second->pid_type() == PidState::kPidAudioPes ||
          pair.second->pid_type() == PidState::kPidVideoPes ||
-         pair.second->pid_type() == PidState::kPidTextPes) &&
+         pair.second->pid_type() == PidState::kPidTextPes ||
+         pair.second->pid_type() == PidState::kPidSCTE35Pes) &&
         pair.second->IsEnabled()) {
       ++num_es;
       if (pair.second->config())
@@ -443,8 +466,25 @@ void Mp2tMediaParser::OnEmitTextSample(uint32_t pes_pid,
   pid_state->second->text_sample_queue_.push_back(std::move(new_sample));
 }
 
+void Mp2tMediaParser::OnEmitSCTE35Event(uint32_t pes_pid,
+                                       std::shared_ptr<SCTE35Event> new_sample) {
+  DCHECK(new_sample);
+  DVLOG(LOG_LEVEL_ES) << "OnEmitSCTE35Event: "
+                      << " pid=" << pes_pid
+                      << " start=" << new_sample->start_time();
+
+  // Add the sample to the appropriate PID sample queue.
+  auto pid_state = pids_.find(pes_pid);
+  if (pid_state == pids_.end()) {
+    LOG(ERROR) << "PID State for new sample not found (pid = "
+               << pes_pid << ").";
+    return;
+  }
+  pid_state->second->scte35_event_queue_.push_back(std::move(new_sample));
+}
+
 bool Mp2tMediaParser::EmitRemainingSamples() {
-  DVLOG(LOG_LEVEL_ES) << "Mp2tMediaParser::EmitRemainingBuffers";
+  //DVLOG(LOG_LEVEL_ES) << "Mp2tMediaParser::EmitRemainingBuffers";
 
   // No buffer should be sent until fully initialized.
   if (!is_initialized_)
@@ -461,6 +501,10 @@ bool Mp2tMediaParser::EmitRemainingSamples() {
       RCHECK(new_text_sample_cb_(pid_pair.first, sample));
     }
     pid_pair.second->text_sample_queue_.clear();
+    for (auto sample : pid_pair.second->scte35_event_queue_) {
+      RCHECK(new_scte35_event_cb_(pid_pair.first, sample));
+    }
+    pid_pair.second->scte35_event_queue_.clear();
   }
 
   return true;

@@ -95,7 +95,6 @@ bool TsSectionPmt::ParsePsiSection(BitReader* bit_reader) {
     RCHECK(bit_reader->ReadBits(4, &reserved));
     RCHECK(bit_reader->ReadBits(12, &es_info_length));
     const uint8_t* descriptor = bit_reader->current_byte_ptr();
-
     // Do not register the PID right away.
     // Wait for the end of the section to be fully parsed
     // to make sure there is no error.
@@ -129,7 +128,6 @@ bool TsSectionPmt::ParsePsiSection(BitReader* bit_reader) {
   // Read the CRC.
   int crc32;
   RCHECK(bit_reader->ReadBits(32, &crc32));
-
   // Once the PMT has been proved to be correct, register the PIDs.
   for (auto& info : pid_info) {
     register_pes_cb_(info.pid_es, info.stream_type, info.descriptor,

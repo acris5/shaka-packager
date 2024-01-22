@@ -1,4 +1,4 @@
-// Copyright 2017 Google LLC. All rights reserved.
+// Copyright 2017 Google Inc. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <chrono>
 #include <optional>
-
 #include <absl/log/check.h>
 #include <absl/log/log.h>
 #include <absl/strings/match.h>
@@ -61,23 +60,13 @@ const char kMediaInfoSuffix[] = ".media_info";
 
 const int64_t kDefaultTextZeroBiasMs = 10 * 60 * 1000;  // 10 minutes
 
-MuxerListenerFactory::StreamData ToMuxerListenerData(
-    const StreamDescriptor& stream) {
-  MuxerListenerFactory::StreamData data;
-  data.media_info_output = stream.output;
+bool IsScte35Stream(const StreamDescriptor& stream) {
+  if (stream.stream_selector == "scte35")
+    return true;
+  else
+    return false;
+}
 
-  data.hls_group_id = stream.hls_group_id;
-  data.hls_name = stream.hls_name;
-  data.hls_playlist_name = stream.hls_playlist_name;
-  data.hls_iframe_playlist_name = stream.hls_iframe_playlist_name;
-  data.hls_characteristics = stream.hls_characteristics;
-  data.hls_only = stream.hls_only;
-
-  data.dash_accessiblities = stream.dash_accessiblities;
-  data.dash_roles = stream.dash_roles;
-  data.dash_only = stream.dash_only;
-  return data;
-};
 
 // TODO(rkuroiwa): Write TTML and WebVTT parser (demuxing) for a better check
 // and for supporting live/segmenting (muxing).  With a demuxer and a muxer,
@@ -110,7 +99,10 @@ bool DetermineTextFileCodec(const std::string& file, std::string* out) {
   return false;
 }
 
+
 MediaContainerName GetOutputFormat(const StreamDescriptor& descriptor) {
+  if (IsScte35Stream(descriptor))
+    return EVENTS_SCTE35;
   if (!descriptor.output_format.empty()) {
     MediaContainerName format =
         DetermineContainerFromFormatName(descriptor.output_format);
@@ -155,25 +147,6 @@ MediaContainerName GetOutputFormat(const StreamDescriptor& descriptor) {
   return CONTAINER_UNKNOWN;
 }
 
-MediaContainerName GetTextOutputCodec(const StreamDescriptor& descriptor) {
-  const auto output_container = GetOutputFormat(descriptor);
-  if (output_container != CONTAINER_MOV)
-    return output_container;
-
-  const auto input_container = DetermineContainerFromFileName(descriptor.input);
-  if (absl::AsciiStrToLower(descriptor.output_format) == "vtt+mp4" ||
-      absl::AsciiStrToLower(descriptor.output_format) == "webvtt+mp4") {
-    return CONTAINER_WEBVTT;
-  } else if (absl::AsciiStrToLower(descriptor.output_format) != "ttml+mp4" &&
-             input_container == CONTAINER_WEBVTT) {
-    // With WebVTT input, default to WebVTT output.
-    return CONTAINER_WEBVTT;
-  } else {
-    // Otherwise default to TTML since it has more features.
-    return CONTAINER_TTML;
-  }
-}
-
 bool IsTextStream(const StreamDescriptor& stream) {
   if (stream.stream_selector == "text")
     return true;
@@ -187,6 +160,46 @@ bool IsTextStream(const StreamDescriptor& stream) {
   return output_format == CONTAINER_WEBVTT || output_format == CONTAINER_TTML;
 }
 
+MediaContainerName GetTextOutputCodec(const StreamDescriptor& descriptor) {
+  const auto output_container = GetOutputFormat(descriptor);
+  if (output_container != CONTAINER_MOV)
+    return output_container;
+
+  const auto input_container = DetermineContainerFromFileName(descriptor.input);
+  if (absl::AsciiStrToLower(descriptor.output_format) == "vtt+mp4" ||
+      absl::AsciiStrToLower(descriptor.output_format) == "webvtt+mp4") {
+    return CONTAINER_WEBVTT;
+  } else if (!(absl::AsciiStrToLower(descriptor.output_format) == "ttml+mp4") &&
+             input_container == CONTAINER_WEBVTT) {
+    // With WebVTT input, default to WebVTT output.
+    return CONTAINER_WEBVTT;
+  } else {
+    // Otherwise default to TTML since it has more features.
+    return CONTAINER_TTML;
+  }
+}
+
+
+MuxerListenerFactory::StreamData ToMuxerListenerData(
+    const StreamDescriptor& stream) {
+  MuxerListenerFactory::StreamData data;
+  data.media_info_output = stream.output;
+
+  data.hls_group_id = stream.hls_group_id;
+  data.hls_name = stream.hls_name;
+  data.hls_playlist_name = stream.hls_playlist_name;
+  data.hls_iframe_playlist_name = stream.hls_iframe_playlist_name;
+  data.hls_characteristics = stream.hls_characteristics;
+  data.hls_only = stream.hls_only;
+
+  data.dash_accessiblities = stream.dash_accessiblities;
+  data.dash_roles = stream.dash_roles;
+  data.dash_only = stream.dash_only;
+  //There will be created as many notifiers as codecs in input stream; for media streams count will be updated after analysing input stream
+  if (IsScte35Stream(stream)) data.codecs_count = 1;
+  return data;
+};
+
 Status ValidateStreamDescriptor(bool dump_stream_info,
                                 const StreamDescriptor& stream) {
   if (stream.input.empty()) {
@@ -197,6 +210,11 @@ Status ValidateStreamDescriptor(bool dump_stream_info,
   // set.
   if (dump_stream_info && stream.output.empty() &&
       stream.segment_template.empty()) {
+    return Status::OK;
+  }
+
+  if (IsScte35Stream(stream)){
+    //for scte35 only input is needed
     return Status::OK;
   }
 
@@ -301,7 +319,7 @@ Status ValidateParams(const PackagingParams& packaging_params,
   std::set<std::string> outputs;
   std::set<std::string> segment_templates;
   for (const auto& descriptor : stream_descriptors) {
-    if (on_demand_dash_profile != descriptor.segment_template.empty()) {
+    if (!IsScte35Stream(descriptor) && on_demand_dash_profile != descriptor.segment_template.empty()) {
       return Status(error::INVALID_ARGUMENT,
                     "Inconsistent stream descriptor specification: "
                     "segment_template should be specified for none or all "
@@ -643,12 +661,13 @@ Status CreateAudioVideoJobs(
     const bool new_stream =
         new_input_file || previous_selector != stream.stream_selector;
     const bool is_text = IsTextStream(stream);
+    const bool is_scte35 = IsScte35Stream(stream);
     previous_input = stream.input;
     previous_selector = stream.stream_selector;
 
     // If the stream has no output, then there is no reason setting-up the rest
     // of the pipeline.
-    if (stream.output.empty() && stream.segment_template.empty()) {
+    if (!IsScte35Stream(stream) && stream.output.empty() && stream.segment_template.empty()) {
       continue;
     }
 
@@ -668,7 +687,7 @@ Status CreateAudioVideoJobs(
       if (sync_points) {
         handlers.emplace_back(cue_aligner);
       }
-      if (!is_text) {
+      if (!is_text && !is_scte35) {
         handlers.emplace_back(std::make_shared<ChunkingHandler>(
             packaging_params.chunking_params));
         handlers.emplace_back(CreateEncryptionHandler(packaging_params, stream,
@@ -691,7 +710,6 @@ Status CreateAudioVideoJobs(
                                                  stream.input + ":" +
                                                  stream.stream_selector);
     }
-
     std::unique_ptr<MuxerListener> muxer_listener =
         muxer_listener_factory->CreateListener(ToMuxerListenerData(stream));
     muxer->SetMuxerListener(std::move(muxer_listener));
@@ -769,8 +787,10 @@ Status CreateAllJobs(const std::vector<StreamDescriptor>& stream_descriptors,
           break;
         case CONTAINER_TTML:
         case CONTAINER_WEBVTT:
+        case EVENTS_SCTE35:
           break;
         default:
+        //case CONTAINER_MOV:
           has_non_transport_audio_video_streams = true;
           break;
       }
@@ -800,7 +820,6 @@ Status CreateAllJobs(const std::vector<StreamDescriptor>& stream_descriptors,
   RETURN_IF_ERROR(CreateAudioVideoJobs(
       audio_video_streams, packaging_params, encryption_key_source, sync_points,
       muxer_listener_factory, muxer_factory, job_manager));
-
   // Initialize processing graph.
   return job_manager->InitializeJobs();
 }
@@ -824,6 +843,8 @@ Packager::~Packager() {}
 Status Packager::Initialize(
     const PackagingParams& packaging_params,
     const std::vector<StreamDescriptor>& stream_descriptors) {
+  
+
   if (internal_)
     return Status(error::INVALID_ARGUMENT, "Already initialized.");
 
@@ -944,18 +965,15 @@ Status Packager::Initialize(
   if (packaging_params.test_params.inject_fake_clock) {
     muxer_factory.OverrideClock(internal->fake_clock);
   }
-
   media::MuxerListenerFactory muxer_listener_factory(
       packaging_params.output_media_info,
       packaging_params.mpd_params.use_segment_list,
       internal->mpd_notifier.get(), internal->hls_notifier.get());
-
   RETURN_IF_ERROR(media::CreateAllJobs(
       streams_for_jobs, packaging_params, internal->mpd_notifier.get(),
       internal->encryption_key_source.get(),
       internal->job_manager->sync_points(), &muxer_listener_factory,
       &muxer_factory, internal->job_manager.get()));
-
   internal_ = std::move(internal);
   return Status::OK;
 }

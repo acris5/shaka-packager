@@ -21,6 +21,7 @@ enum StreamType {
   kStreamAudio,
   kStreamVideo,
   kStreamText,
+  kStreamSCTE35,
 };
 
 std::string StreamTypeToString(StreamType type);
@@ -61,6 +62,7 @@ enum Codec {
   kCodecText = 300,
   kCodecWebVtt = kCodecText,
   kCodecTtml,
+  kCodecSCTE35 = 400,
 };
 
 /// Abstract class holds stream information.

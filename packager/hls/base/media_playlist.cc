@@ -10,6 +10,7 @@
 #include <cinttypes>
 #include <cmath>
 #include <memory>
+#include <iostream>
 
 #include <absl/log/check.h>
 #include <absl/log/log.h>
@@ -334,6 +335,73 @@ std::string PlacementOpportunityEntry::ToString() {
   return "#EXT-X-PLACEMENT-OPPORTUNITY";
 }
 
+
+class XCueOut : public HlsEntry {
+ public:
+  XCueOut(float duration_seconds);
+
+  std::string ToString() override;
+
+ private:
+  float duration_seconds_;
+  XCueOut(const XCueOut&) = delete;
+  XCueOut& operator=(const XCueOut&) =
+      delete;
+};
+
+XCueOut::XCueOut(float duration_seconds)
+    : HlsEntry(HlsEntry::EntryType::kExtCueOut),
+    duration_seconds_(duration_seconds) {};
+
+std::string XCueOut::ToString() {
+  std::string result = absl::StrFormat("#EXT-X-CUE-OUT:%.3f", duration_seconds_);
+  return result;
+};
+
+class XCueCont : public HlsEntry {
+ public:
+  XCueCont(float duration_seconds, float passed_seconds);
+
+  std::string ToString() override;
+
+ private:
+  float duration_seconds_;
+  float passed_seconds_;
+  XCueCont(const XCueCont&) = delete;
+  XCueCont& operator=(const XCueCont&) =
+      delete;
+};
+
+XCueCont::XCueCont(float duration_seconds, float passed_seconds)
+    : HlsEntry(HlsEntry::EntryType::kExtCueCont),
+    duration_seconds_(duration_seconds),
+    passed_seconds_(passed_seconds) {};
+
+std::string XCueCont::ToString() {
+  std::string result = absl::StrFormat("#EXT-X-CUE-CONT:%.3f/%.3f", passed_seconds_, duration_seconds_);
+  return result;
+};
+
+
+class XCueIn : public HlsEntry {
+ public:
+  XCueIn();
+
+  std::string ToString() override;
+
+ private:
+  XCueIn(const XCueIn&) = delete;
+  XCueIn& operator=(const XCueIn&) =
+      delete;
+};
+
+XCueIn::XCueIn()
+    : HlsEntry(HlsEntry::EntryType::kExtCueIn) {}
+
+std::string XCueIn::ToString() {
+  return "#EXT-X-CUE-IN";
+}
+
 }  // namespace
 
 HlsEntry::HlsEntry(HlsEntry::EntryType type) : type_(type) {}
@@ -451,6 +519,12 @@ void MediaPlaylist::AddKeyFrame(int64_t timestamp,
   key_frames_.push_back({timestamp, start_byte_offset, size, std::string("")});
 }
 
+void MediaPlaylist::AddScte35Event(int64_t timestamp,
+                                int64_t duration) {
+  scte35_events_.push_back({timestamp, duration});
+}
+
+
 void MediaPlaylist::AddEncryptionInfo(MediaPlaylist::EncryptionMethod method,
                                       const std::string& url,
                                       const std::string& key_id,
@@ -470,6 +544,22 @@ void MediaPlaylist::AddEncryptionInfo(MediaPlaylist::EncryptionMethod method,
 
 void MediaPlaylist::AddPlacementOpportunity() {
   entries_.emplace_back(new PlacementOpportunityEntry());
+}
+
+void MediaPlaylist::AddXCueOut(int64_t duration) {
+  LOG(INFO)<<"HLS: XCueOut "<<static_cast< float >(duration)/90000<<std::endl;
+  entries_.emplace_back(new XCueOut(static_cast< float >(duration)/90000));
+}
+
+void MediaPlaylist::AddXCueCont(int64_t duration, float passed) {
+  float duration_seconds = static_cast<float>(duration)/90000;
+  LOG(INFO)<<"HLS: XCueCont "<< duration_seconds <<std::endl;
+  entries_.emplace_back(new XCueCont(duration_seconds, passed));
+}
+
+void MediaPlaylist::AddXCueIn() {
+  LOG(INFO)<<"HLS: XCueIn "<<std::endl;
+  entries_.emplace_back(new XCueIn());
 }
 
 bool MediaPlaylist::WriteToFile(const std::filesystem::path& file_path) {
@@ -602,7 +692,39 @@ void MediaPlaylist::AddSegmentInfoEntry(const std::string& segment_file_name,
   // segment. So the current segment duration is added to the sum of segment
   // durations (in the manifest/playlist) after sliding the window.
   SlideWindow();
+  bool inserted_cue = false;
 
+  if (!scte35_events_.empty()){
+    //insert pending scte35 cues
+    //possibly need to iter through the list
+    auto iter =scte35_events_.front();
+     //for (auto iter = scte35_events_.begin(); iter != scte35_events_.end(); ++iter) {
+      if (iter.timestamp <= start_time){
+        if (iter.duration >= 0){
+          current_Scte35_ = iter;
+          AddXCueOut(iter.duration);
+        }
+        else {
+          current_Scte35_ = {0,0};
+          //TODO: check if needed if no cue was before
+          AddXCueIn();
+        }
+        scte35_events_.pop_front();
+        inserted_cue = true;
+      }
+  }
+  if (!inserted_cue && current_Scte35_.duration > 0  && current_Scte35_.timestamp <= start_time){
+    if(current_Scte35_.timestamp + static_cast<uint64_t>(current_Scte35_.duration) <= static_cast<uint64_t>(start_time)){
+      //TODO: I'm not sure if this needed (Usually Cue In is sent)
+      current_Scte35_ = {0,0};
+      AddXCueIn();
+    } else {
+      float passed_seconds = static_cast<float>(start_time - current_Scte35_.timestamp)/90000;
+      AddXCueCont(current_Scte35_.duration, passed_seconds);
+    }
+    inserted_cue = true;
+  }
+  //TODO: if current_Scte35 is not null then possible add X-CUE-CONT
   const double segment_duration_seconds =
       static_cast<double>(duration) / time_scale_;
   longest_segment_duration_seconds_ =
@@ -693,7 +815,11 @@ void MediaPlaylist::SlideWindow() {
       ext_x_keys.push_back(std::move(*last));
     } else if (entry_type == HlsEntry::EntryType::kExtDiscontinuity) {
       ++discontinuity_sequence_number_;
-    } else {
+    } else if (entry_type == HlsEntry::EntryType::kExtPlacementOpportunity || 
+                entry_type == HlsEntry::EntryType::kExtCueOut || entry_type == HlsEntry::EntryType::kExtCueIn || entry_type == HlsEntry::EntryType::kExtCueCont) {
+        //do smth with Cues
+
+      } else { 
       DCHECK_EQ(static_cast<int>(entry_type),
                 static_cast<int>(HlsEntry::EntryType::kExtInf));
 

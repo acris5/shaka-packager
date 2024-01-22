@@ -109,6 +109,9 @@ class Mp2tMediaParserTest : public testing::Test {
   bool OnNewTextSample(uint32_t track_id, std::shared_ptr<TextSample> sample) {
     return false;
   }
+   bool OnNewSCTE35Event(uint32_t track_id, std::shared_ptr<SCTE35Event> sample) {
+    return false;
+  }
 
   void InitializeParser() {
     parser_->Init(
@@ -116,6 +119,8 @@ class Mp2tMediaParserTest : public testing::Test {
         std::bind(&Mp2tMediaParserTest::OnNewSample, this,
                   std::placeholders::_1, std::placeholders::_2),
         std::bind(&Mp2tMediaParserTest::OnNewTextSample, this,
+                  std::placeholders::_1, std::placeholders::_2),
+        std::bind(&Mp2tMediaParserTest::OnNewSCTE35Event, this,
                   std::placeholders::_1, std::placeholders::_2),
         NULL);
   }

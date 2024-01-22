@@ -37,6 +37,7 @@ class Mp2tMediaParser : public MediaParser {
   void Init(const InitCB& init_cb,
             const NewMediaSampleCB& new_media_sample_cb,
             const NewTextSampleCB& new_text_sample_cb,
+            const NewSCTE35EventCB& new_scte35_event_cb,
             KeySource* decryption_key_source) override;
   [[nodiscard]] bool Flush() override;
   [[nodiscard]] bool Parse(const uint8_t* buf, int size) override;
@@ -68,6 +69,8 @@ class Mp2tMediaParser : public MediaParser {
                          std::shared_ptr<MediaSample> new_sample);
   void OnEmitTextSample(uint32_t pes_pid,
                         std::shared_ptr<TextSample> new_sample);
+  void OnEmitSCTE35Event(uint32_t pes_pid,
+                        std::shared_ptr<SCTE35Event> new_sample);
 
   // Invoke the initialization callback if needed.
   bool FinishInitializationIfNeeded();
@@ -84,6 +87,7 @@ class Mp2tMediaParser : public MediaParser {
   InitCB init_cb_;
   NewMediaSampleCB new_media_sample_cb_;
   NewTextSampleCB new_text_sample_cb_;
+  NewSCTE35EventCB new_scte35_event_cb_;
 
   bool sbr_in_mimetype_;
 
@@ -99,7 +103,7 @@ class Mp2tMediaParser : public MediaParser {
 
   // A map used to track unsupported stream types and make sure the error is
   // only logged once.
-  std::bitset<256> stream_type_logged_once_;
+  std::bitset<2256> stream_type_logged_once_;
 
   DISALLOW_COPY_AND_ASSIGN(Mp2tMediaParser);
 };

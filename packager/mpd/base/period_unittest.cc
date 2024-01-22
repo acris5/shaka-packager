@@ -78,7 +78,8 @@ class TestablePeriod : public Period {
       : Period(kDefaultPeriodId,
                kDefaultPeriodStartTime,
                mpd_options,
-               &sequence_number_) {}
+               &sequence_number_,
+               &events_counter_) {}
 
   MOCK_METHOD3(
       NewAdaptationSet,
@@ -89,6 +90,7 @@ class TestablePeriod : public Period {
  private:
   // Only for constructing the super class. Not used for testing.
   uint32_t sequence_number_ = 0;
+  uint32_t events_counter_ = 0;
 };
 
 }  // namespace

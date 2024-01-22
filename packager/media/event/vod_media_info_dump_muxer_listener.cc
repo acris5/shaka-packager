@@ -122,6 +122,11 @@ void VodMediaInfoDumpMuxerListener::OnCueEvent(int64_t timestamp,
   NOTIMPLEMENTED();
 }
 
+void VodMediaInfoDumpMuxerListener::OnSCTE35Event(int64_t timestamp, int64_t duration,
+                                               const std::string& cue_data) {
+  NOTIMPLEMENTED();
+}
+
 // static
 bool VodMediaInfoDumpMuxerListener::WriteMediaInfoToFile(
     const MediaInfo& media_info,

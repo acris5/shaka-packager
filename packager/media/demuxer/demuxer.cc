@@ -40,6 +40,7 @@ const size_t kInvalidStreamIndex = static_cast<size_t>(-1);
 const size_t kBaseVideoOutputStreamIndex = 0x100;
 const size_t kBaseAudioOutputStreamIndex = 0x200;
 const size_t kBaseTextOutputStreamIndex = 0x300;
+const size_t kBaseSCTE35OutputStreamIndex = 0x400;
 
 std::string GetStreamLabel(size_t stream_index) {
   switch (stream_index) {
@@ -49,6 +50,8 @@ std::string GetStreamLabel(size_t stream_index) {
       return "audio";
     case kBaseTextOutputStreamIndex:
       return "text";
+    case kBaseSCTE35OutputStreamIndex:
+      return "scte35";
     default:
       return absl::StrFormat("%u", stream_index);
   }
@@ -62,11 +65,13 @@ bool GetStreamIndex(const std::string& stream_label, size_t* stream_index) {
     *stream_index = kBaseAudioOutputStreamIndex;
   } else if (stream_label == "text") {
     *stream_index = kBaseTextOutputStreamIndex;
+  } else if (stream_label == "scte35") {
+    *stream_index = kBaseSCTE35OutputStreamIndex;
   } else {
     // Expect stream_label to be a zero based stream id.
     if (!absl::SimpleAtoi(stream_label, stream_index)) {
       LOG(ERROR) << "Invalid argument --stream=" << stream_label << "; "
-                 << "should be 'audio', 'video', 'text', or a number";
+                 << "should be 'audio', 'video', 'text', 'scte35' or a number";
       return false;
     }
   }
@@ -158,7 +163,6 @@ Status Demuxer::InitializeParser() {
   DCHECK(!all_streams_ready_);
 
   LOG(INFO) << "Initialize Demuxer for file '" << file_name_ << "'.";
-
   media_file_ = File::Open(file_name_.c_str(), "r");
   if (!media_file_) {
     return Status(error::FILE_FAILURE,
@@ -226,6 +230,8 @@ Status Demuxer::InitializeParser() {
                 std::placeholders::_2),
       std::bind(&Demuxer::NewTextSampleEvent, this, std::placeholders::_1,
                 std::placeholders::_2),
+      std::bind(&Demuxer::NewSCTE35EventEvent, this, std::placeholders::_1,
+                std::placeholders::_2),
       key_source_.get());
 
   // Handle trailing 'moov'.
@@ -244,13 +250,12 @@ Status Demuxer::InitializeParser() {
 
 void Demuxer::ParserInitEvent(
     const std::vector<std::shared_ptr<StreamInfo>>& stream_infos) {
-  if (dump_stream_info_) {
+  //if (dump_stream_info_) {
     printf("\nFile \"%s\":\n", file_name_.c_str());
     printf("Found %zu stream(s).\n", stream_infos.size());
     for (size_t i = 0; i < stream_infos.size(); ++i)
       printf("Stream [%zu] %s\n", i, stream_infos[i]->ToString().c_str());
-  }
-
+  //}
   int base_stream_index = 0;
   bool video_handler_set =
       output_handlers().find(kBaseVideoOutputStreamIndex) !=
@@ -260,6 +265,9 @@ void Demuxer::ParserInitEvent(
       output_handlers().end();
   bool text_handler_set =
       output_handlers().find(kBaseTextOutputStreamIndex) !=
+      output_handlers().end();
+  bool scte35_handler_set =
+      output_handlers().find(kBaseSCTE35OutputStreamIndex) !=
       output_handlers().end();
   for (const std::shared_ptr<StreamInfo>& stream_info : stream_infos) {
     size_t stream_index = base_stream_index;
@@ -276,6 +284,11 @@ void Demuxer::ParserInitEvent(
     if (text_handler_set && stream_info->stream_type() == kStreamText) {
       stream_index = kBaseTextOutputStreamIndex;
       text_handler_set = false;
+    }
+    if (scte35_handler_set && stream_info->stream_type() == kStreamSCTE35) {
+      LOG(INFO)<<"Init SCTE35 stream"<<std::endl;
+      stream_index = kBaseSCTE35OutputStreamIndex;
+      scte35_handler_set = false;
     }
 
     const bool handler_set =
@@ -308,6 +321,7 @@ void Demuxer::ParserInitEvent(
 bool Demuxer::NewMediaSampleEvent(uint32_t track_id,
                                   std::shared_ptr<MediaSample> sample) {
   if (!all_streams_ready_) {
+    LOG(INFO)<<"Demuxer NewMediaSampleEvent all_streams_ready_: "<<all_streams_ready_<<std::endl;
     if (queued_media_samples_.size() >= kQueuedSamplesLimit) {
       LOG(ERROR) << "Queued samples limit reached: " << kQueuedSamplesLimit;
       return false;
@@ -332,6 +346,7 @@ bool Demuxer::NewMediaSampleEvent(uint32_t track_id,
 bool Demuxer::NewTextSampleEvent(uint32_t track_id,
                                  std::shared_ptr<TextSample> sample) {
   if (!all_streams_ready_) {
+    LOG(INFO)<<"Demuxer NewTextSampleEvent all_streams_ready_: "<<all_streams_ready_<<std::endl;
     if (queued_text_samples_.size() >= kQueuedSamplesLimit) {
       LOG(ERROR) << "Queued samples limit reached: " << kQueuedSamplesLimit;
       return false;
@@ -351,6 +366,30 @@ bool Demuxer::NewTextSampleEvent(uint32_t track_id,
     queued_text_samples_.pop_front();
   }
   return PushTextSample(track_id, sample);
+}
+
+bool Demuxer::NewSCTE35EventEvent(uint32_t track_id,
+                                 std::shared_ptr<SCTE35Event> sample) {
+  if (!all_streams_ready_) {
+    if (queued_scte35_events_.size() >= kQueuedSamplesLimit) {
+      LOG(ERROR) << "Queued samples limit reached: " << kQueuedSamplesLimit;
+      return false;
+    }
+    queued_scte35_events_.emplace_back(track_id, sample);
+    return true;
+  }
+  if (!init_event_status_.ok()) {
+    return false;
+  }
+
+  while (!queued_scte35_events_.empty()) {
+    if (!PushSCTE35Event(queued_scte35_events_.front().track_id,
+                        queued_scte35_events_.front().sample)) {
+      return false;
+    }
+    queued_scte35_events_.pop_front();
+  }
+  return PushSCTE35Event(track_id, sample);
 }
 
 bool Demuxer::PushMediaSample(uint32_t track_id,
@@ -388,6 +427,25 @@ bool Demuxer::PushTextSample(uint32_t track_id,
   }
   return true;
 }
+
+bool Demuxer::PushSCTE35Event(uint32_t track_id,
+                             std::shared_ptr<SCTE35Event> sample) {
+  auto stream_index_iter = track_id_to_stream_index_map_.find(track_id);
+  if (stream_index_iter == track_id_to_stream_index_map_.end()) {
+    LOG(ERROR) << "Track " << track_id << " not found.";
+    return false;
+  }
+  if (stream_index_iter->second == kInvalidStreamIndex)
+    return true;
+  Status status = DispatchScte35Event(stream_index_iter->second, sample);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to process scte35 event " << stream_index_iter->second
+               << " " << status;
+    return false;
+  }
+  return true;
+}
+
 
 Status Demuxer::Parse() {
   DCHECK(media_file_);

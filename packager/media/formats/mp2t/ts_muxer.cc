@@ -20,9 +20,10 @@ TsMuxer::TsMuxer(const MuxerOptions& muxer_options) : Muxer(muxer_options) {}
 TsMuxer::~TsMuxer() {}
 
 Status TsMuxer::InitializeMuxer() {
-  if (streams().size() > 1u)
+  if (streams().size() > 1u){
     return Status(error::MUXER_FAILURE, "Cannot handle more than one streams.");
-
+  }
+  LOG(INFO)<<"TsMuxer -- FireOnMediaStartEvent";
   segmenter_.reset(new TsSegmenter(options(), muxer_listener()));
   Status status = segmenter_->Initialize(*streams()[0]);
   FireOnMediaStartEvent();

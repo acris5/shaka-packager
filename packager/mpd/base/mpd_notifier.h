@@ -120,6 +120,12 @@ class MpdNotifier {
   /// @return true on success, false otherwise.
   virtual bool NotifyCueEvent(uint32_t container_id, int64_t timestamp) = 0;
 
+    /// Notifies MpdBuilder that there is a new SCTE35Event.
+  /// @param timestamp is the timestamp of the SCTE35Event.
+  /// @param duration is the duration of the SCTE35Event.
+  /// @return true on success, false otherwise.
+  virtual bool NotifySCTE35Event(int64_t timestamp, int64_t duration, const std::string& cue_data) = 0;
+
   /// Notifiers MpdBuilder that there is a new PSSH for the container.
   /// This may be called whenever the key has to change, e.g. key rotation.
   /// @param container_id Container ID obtained from calling

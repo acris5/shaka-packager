@@ -286,7 +286,7 @@ bool SimpleHlsNotifier::NotifyNewStream(const MediaInfo& media_info,
                                         const std::string& group_id,
                                         uint32_t* stream_id) {
   DCHECK(stream_id);
-
+  LOG(INFO)<<"NotifyNewHLSStream "<<*stream_id<<" name: "<<playlist_name<<" "<<name<<"seq: "<<sequence_number_<<std::endl;
   const std::string relative_playlist_path = MakePathRelative(
       playlist_name, std::filesystem::u8path(master_playlist_dir_));
 
@@ -405,6 +405,7 @@ bool SimpleHlsNotifier::NotifyKeyFrame(uint32_t stream_id,
 
 bool SimpleHlsNotifier::NotifyCueEvent(uint32_t stream_id, int64_t timestamp) {
   absl::MutexLock lock(&lock_);
+  LOG(INFO)<<"SimpleHlsNotifier::NotifyCueEvent "<<stream_id<<std::endl;
   auto stream_iterator = stream_map_.find(stream_id);
   if (stream_iterator == stream_map_.end()) {
     LOG(ERROR) << "Cannot find stream with ID: " << stream_id;
@@ -412,6 +413,17 @@ bool SimpleHlsNotifier::NotifyCueEvent(uint32_t stream_id, int64_t timestamp) {
   }
   auto& media_playlist = stream_iterator->second->media_playlist;
   media_playlist->AddPlacementOpportunity();
+  return true;
+}
+
+bool SimpleHlsNotifier::NotifySCTE35Event(int64_t timestamp, int64_t duration) {
+  absl::MutexLock lock(&lock_);
+  LOG(INFO)<<"SimpleHlsNotifier::NotifySCTE35Event notify all streams"<<std::endl;
+  for (auto stream_iterator = stream_map_.begin(); stream_iterator != stream_map_.end(); ++stream_iterator) {
+    auto& media_playlist = stream_iterator->second->media_playlist;
+    LOG(INFO)<<"AddScte35Event to "<<media_playlist->name()<<" "<<media_playlist->file_name()<<std::endl;
+    media_playlist->AddScte35Event(timestamp,duration);
+  }
   return true;
 }
 

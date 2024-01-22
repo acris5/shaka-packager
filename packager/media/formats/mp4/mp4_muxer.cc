@@ -211,7 +211,6 @@ Status MP4Muxer::FinalizeSegment(size_t stream_id,
 
 Status MP4Muxer::DelayInitializeMuxer() {
   DCHECK(!streams().empty());
-
   std::unique_ptr<FileType> ftyp(new FileType);
   std::unique_ptr<Movie> moov(new Movie);
 
@@ -660,8 +659,10 @@ std::optional<Range> MP4Muxer::GetIndexRangeStartAndEnd() {
 }
 
 void MP4Muxer::FireOnMediaStartEvent() {
-  if (!muxer_listener())
+  if (!muxer_listener()){
     return;
+  }
+    
 
   if (streams().size() > 1) {
     LOG(ERROR) << "MuxerListener cannot take more than 1 stream.";

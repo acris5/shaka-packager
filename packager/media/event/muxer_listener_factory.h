@@ -53,6 +53,8 @@ class MuxerListenerFactory {
     std::vector<std::string> dash_accessiblities;
     std::vector<std::string> dash_roles;
     bool dash_only = false;
+
+    int codecs_count = 2;
   };
 
   /// Create a new muxer listener.

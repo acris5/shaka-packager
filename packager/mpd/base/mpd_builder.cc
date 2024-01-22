@@ -140,7 +140,16 @@ Period* MpdBuilder::GetOrCreatePeriod(double start_time_in_seconds) {
       return period.get();
   }
   periods_.emplace_back(new Period(period_counter_++, start_time_in_seconds,
-                                   mpd_options_, &representation_counter_));
+                                   mpd_options_, &representation_counter_, &events_counter_));
+  return periods_.back().get();
+}
+
+Period* MpdBuilder::GetPeriodForEvents(double start_time_in_seconds) {
+  for (auto& period : periods_) {
+        return period.get();
+  }
+  periods_.emplace_back(new Period(period_counter_++, start_time_in_seconds,
+                                   mpd_options_, &representation_counter_, &events_counter_));
   return periods_.back().get();
 }
 

@@ -69,11 +69,13 @@ AdaptationSet::Role RoleFromString(const std::string& role_str) {
 Period::Period(uint32_t period_id,
                double start_time_in_seconds,
                const MpdOptions& mpd_options,
-               uint32_t* representation_counter)
+               uint32_t* representation_counter,
+               uint32_t* events_counter)
     : id_(period_id),
       start_time_in_seconds_(start_time_in_seconds),
       mpd_options_(mpd_options),
-      representation_counter_(representation_counter) {}
+      representation_counter_(representation_counter),
+      events_counter_(events_counter) {}
 
 AdaptationSet* Period::GetOrCreateAdaptationSet(
     const MediaInfo& media_info,
@@ -124,6 +126,15 @@ AdaptationSet* Period::GetOrCreateAdaptationSet(
   return adaptation_set_ptr;
 }
 
+EventStream* Period::GetOrCreateEventStream() {
+
+  if (event_stream_ == nullptr){
+     event_stream_ =
+      std::unique_ptr<EventStream>(new EventStream(mpd_options_, events_counter_));
+  }
+      return event_stream_.get();
+}
+
 std::optional<xml::XmlNode> Period::GetXml(bool output_period_duration) {
   adaptation_sets_.sort(
       [](const std::unique_ptr<AdaptationSet>& adaptation_set_a,
@@ -162,6 +173,12 @@ std::optional<xml::XmlNode> Period::GetXml(bool output_period_duration) {
       return std::nullopt;
   }
 
+  // add Eventstream to one big Period element.
+  if(event_stream_ != nullptr){
+    auto event = event_stream_->GetXml();
+    if (!event || ! period.AddChild(std::move(*event)))
+      return std::nullopt;
+  }
   // Iterate thru AdaptationSets and add them to one big Period element.
   for (const auto& adaptation_set : adaptation_sets_) {
     auto child = adaptation_set->GetXml();

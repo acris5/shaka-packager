@@ -39,6 +39,7 @@ class MockPeriod : public Period {
  private:
   // Only for constructing the super class. Not used for testing.
   uint32_t sequence_counter_ = 0;
+  uint32_t events_counter_ = 0;
 };
 
 class MockAdaptationSet : public AdaptationSet {

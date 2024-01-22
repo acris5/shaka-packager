@@ -96,12 +96,18 @@ class MP4MediaParserTest : public testing::Test {
     return false;
   }
 
+  bool NewSCTE35SampleF(uint32_t track_id, std::shared_ptr<SCTE35Event> sample) {
+    return false;
+  }
+
   void InitializeParser(KeySource* decryption_key_source) {
     parser_->Init(
         std::bind(&MP4MediaParserTest::InitF, this, std::placeholders::_1),
         std::bind(&MP4MediaParserTest::NewSampleF, this, std::placeholders::_1,
                   std::placeholders::_2),
         std::bind(&MP4MediaParserTest::NewTextSampleF, this,
+                  std::placeholders::_1, std::placeholders::_2),
+        std::bind(&MP4MediaParserTest::NewSCTE35SampleF, this,
                   std::placeholders::_1, std::placeholders::_2),
         decryption_key_source);
   }

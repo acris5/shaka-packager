@@ -15,6 +15,7 @@ namespace media {
 class MediaSample;
 class StreamInfo;
 class TextSample;
+class SCTE35Event;
 
 namespace mp2t {
 
@@ -23,6 +24,7 @@ class EsParser {
   typedef std::function<void(std::shared_ptr<StreamInfo>)> NewStreamInfoCB;
   typedef std::function<void(std::shared_ptr<MediaSample>)> EmitSampleCB;
   typedef std::function<void(std::shared_ptr<TextSample>)> EmitTextSampleCB;
+  typedef std::function<void(std::shared_ptr<SCTE35Event>)> EmitSCTE35EventCB;
 
   EsParser(uint32_t pid) : pid_(pid) {}
   virtual ~EsParser() {}

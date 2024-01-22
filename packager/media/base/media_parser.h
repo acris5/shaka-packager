@@ -22,6 +22,7 @@ class KeySource;
 class MediaSample;
 class StreamInfo;
 class TextSample;
+class SCTE35Event;
 
 class MediaParser {
  public:
@@ -53,6 +54,15 @@ class MediaParser {
                              std::shared_ptr<TextSample> text_sample)>
       NewTextSampleCB;
 
+  /// Called when a new scte35 event has been parsed.
+  /// @param track_id is the track id of the new sample.
+  /// @param text_sample is the new text sample.
+  /// @return true if the sample is accepted, false if something was wrong
+  ///         with the sample and a parsing error should be signaled.
+  typedef std::function<bool(uint32_t track_id,
+                              std::shared_ptr<SCTE35Event> scte35_event)>
+      NewSCTE35EventCB;
+
   /// Initialize the parser with necessary callbacks. Must be called before any
   /// data is passed to Parse().
   /// @param init_cb will be called once enough data has been parsed to
@@ -66,6 +76,7 @@ class MediaParser {
   virtual void Init(const InitCB& init_cb,
                     const NewMediaSampleCB& new_media_sample_cb,
                     const NewTextSampleCB& new_text_sample_cb,
+                    const NewSCTE35EventCB& new_scte35_event_cb,
                     KeySource* decryption_key_source) = 0;
 
   /// Flush data currently in the parser and put the parser in a state where it

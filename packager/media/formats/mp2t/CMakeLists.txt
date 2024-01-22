@@ -22,6 +22,8 @@ add_library(mp2t STATIC
   es_parser_h265.h
   es_parser_h26x.cc
   es_parser_h26x.h
+  es_parser_scte35.cc
+  es_parser_scte35.h
   es_parser.h
   es_parser_teletext.cc
   es_parser_teletext.h
@@ -60,6 +62,7 @@ add_library(mp2t STATIC
 target_link_libraries(mp2t
   absl::log
   dvb
+  scte35
   media_base
   media_codecs
   media_crypto
@@ -71,6 +74,7 @@ ac3_header_unittest.cc
 adts_header_unittest.cc
 es_parser_h264_unittest.cc
 es_parser_h26x_unittest.cc
+#es_parser_teletext_unittest.cc
 mp2t_media_parser_unittest.cc
 mpeg1_header_unittest.cc
 pes_packet_generator_unittest.cc

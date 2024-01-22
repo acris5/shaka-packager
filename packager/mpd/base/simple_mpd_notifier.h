@@ -49,6 +49,7 @@ class SimpleMpdNotifier : public MpdNotifier {
                               int64_t duration,
                               uint64_t size) override;
   bool NotifyCueEvent(uint32_t container_id, int64_t timestamp) override;
+  bool NotifySCTE35Event(int64_t timestamp, int64_t duration, const std::string& cue_data) override;
   bool NotifyEncryptionUpdate(uint32_t container_id,
                               const std::string& drm_uuid,
                               const std::vector<uint8_t>& new_key_id,

@@ -143,12 +143,18 @@ class WvmMediaParserTest : public testing::Test {
     return false;
   }
 
+  bool OnNewScte35Sample(uint32_t track_id, std::shared_ptr<SCTE35Event> sample) {
+    return false;
+  }
+
   void InitializeParser() {
     parser_->Init(
         std::bind(&WvmMediaParserTest::OnInit, this, std::placeholders::_1),
         std::bind(&WvmMediaParserTest::OnNewSample, this, std::placeholders::_1,
                   std::placeholders::_2),
         std::bind(&WvmMediaParserTest::OnNewTextSample, this,
+                  std::placeholders::_1, std::placeholders::_2),
+        std::bind(&WvmMediaParserTest::OnNewScte35Sample, this,
                   std::placeholders::_1, std::placeholders::_2),
         key_source_.get());
   }

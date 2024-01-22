@@ -91,6 +91,7 @@ void HlsNotifyMuxerListener::OnMediaStart(const MuxerOptions& muxer_options,
                                           const StreamInfo& stream_info,
                                           int32_t time_scale,
                                           ContainerType container_type) {
+  LOG(INFO)<<"HlsNotifyMuxerListener::OnMediaStart "<<std::endl;
   std::unique_ptr<MediaInfo> media_info(new MediaInfo);
   if (!internal::GenerateMediaInfo(muxer_options, stream_info, time_scale,
                                    container_type, media_info.get())) {
@@ -280,9 +281,14 @@ void HlsNotifyMuxerListener::OnCueEvent(int64_t timestamp,
   }
 }
 
+void HlsNotifyMuxerListener::OnSCTE35Event(int64_t timestamp, int64_t duration,
+                                        const std::string& cue_data) {
+  // Not using |cue_data| at this moment.
+  hls_notifier_->NotifySCTE35Event(timestamp, duration);
+}
+
 bool HlsNotifyMuxerListener::NotifyNewStream() {
   DCHECK(media_info_);
-
   uint32_t stream_id;
   const bool result = hls_notifier_->NotifyNewStream(
       *media_info_, playlist_name_, ext_x_media_name_, ext_x_media_group_id_,
