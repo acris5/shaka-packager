@@ -250,12 +250,16 @@ Status Demuxer::InitializeParser() {
 
 void Demuxer::ParserInitEvent(
     const std::vector<std::shared_ptr<StreamInfo>>& stream_infos) {
-  //if (dump_stream_info_) {
+  if (dump_stream_info_) {
     printf("\nFile \"%s\":\n", file_name_.c_str());
     printf("Found %zu stream(s).\n", stream_infos.size());
     for (size_t i = 0; i < stream_infos.size(); ++i)
       printf("Stream [%zu] %s\n", i, stream_infos[i]->ToString().c_str());
-  //}
+  } else {
+    std::cout<<"File "<<file_name_<<std::endl<<"Found "<<stream_infos.size()<<" streams"<<std::endl;
+    for (size_t i = 0; i < stream_infos.size(); ++i)
+    std::cout<<i<<" Stream:"<< stream_infos[i]->ToString().c_str()<<std::endl;
+  }
   int base_stream_index = 0;
   bool video_handler_set =
       output_handlers().find(kBaseVideoOutputStreamIndex) !=

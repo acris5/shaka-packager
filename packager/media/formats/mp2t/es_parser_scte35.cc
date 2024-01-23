@@ -105,7 +105,7 @@ bool EsParserSCTE35::ParseInternal(const uint8_t* data,
     std::string s(data, data + size);
     std::string h(uint8_to_hex_string(data, size));
     //std::string sBinData = const_cast<char*>(reinterpret_cast<const char *>(ts_packet.payload()));
-    //LOG(INFO) <<  "SCTE35 ParseBinary:" << h <<std::endl;
+    LOG(INFO) <<  "SCTE35 ParseBinary:" << h <<std::endl;
     std::shared_ptr<SCTE35Event> event;
     try {
     if (objLocal.ParseHexa(h)) {
