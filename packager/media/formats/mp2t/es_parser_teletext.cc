@@ -84,9 +84,9 @@ bool ParseSubtitlingDescriptor(
     lang[0] = static_cast<char>((lang_code >> 16) & 0xff);
     lang[1] = static_cast<char>((lang_code >> 8) & 0xff);
     lang[2] = static_cast<char>((lang_code >> 0) & 0xff);
-    LOG(INFO)<<"Text Lang: "<< index<<" : "<<lang <<std::endl;
-
+    
     const uint16_t index = magazine_number * 100 + page_number;
+    LOG(INFO)<<"Text Lang: "<< index<<" : "<<lang;
     result.emplace(index, std::move(lang));
   }
 
