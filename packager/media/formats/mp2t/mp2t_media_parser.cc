@@ -339,6 +339,7 @@ void Mp2tMediaParser::RegisterPes(int pmt_pid,
       pid_type = PidState::kPidTextPes;
       break;
     case TsStreamType::kSCTE35:
+    case TsStreamType::kPesPrivateData:
       es_parser.reset(new EsParserSCTE35(pes_pid, on_new_stream, on_emit_text, on_emit_scte35,
                                       descriptor, descriptor_length));
       LOG(INFO) << "Found scte35 stream (type = 0x "
@@ -364,7 +365,7 @@ void Mp2tMediaParser::RegisterPes(int pmt_pid,
       new PidState(pes_pid, pid_type, std::move(pes_section_parser)));
   pes_pid_state->Enable();
   pids_.emplace(pes_pid, std::move(pes_pid_state));
-  if ( stream_type == TsStreamType::kSCTE35 ){
+  if ( pid_type == PidState::kPidSCTE35Pes ){
     //SCTE35 streams can have ts packets rarely so init as start and do not wait for its packets
     auto info = std::make_shared<SCTE35StreamInfo>(pes_pid, kMpeg2Timescale, kInfiniteDuration, kCodecSCTE35, "", "", "");
     on_new_stream(info);

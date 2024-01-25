@@ -105,13 +105,13 @@ bool EsParserSCTE35::ParseInternal(const uint8_t* data,
     std::string s(data, data + size);
     std::string h(uint8_to_hex_string(data, size));
     //std::string sBinData = const_cast<char*>(reinterpret_cast<const char *>(ts_packet.payload()));
-    LOG(INFO) <<  "SCTE35 ParseBinary:" << h <<std::endl;
+    DLOG(INFO) <<  "SCTE35 ParseBinary:" << h ;
     std::shared_ptr<SCTE35Event> event;
     try {
     if (objLocal.ParseHexa(h)) {
       if (objLocal.m_SInfoData.splice_command_type !=
           scte35::scte35Cmd::splice_null) {
-        // LOG(INFO)<<  "SCTE35 text: "<< objLocal.GetText(false)<<std::endl;
+        DLOG(INFO) <<  "SCTE35 text: "<< objLocal.GetText(false);
         if (objLocal.m_SInfoData.splice_command_type == scte35::scte35Cmd::splice_insert) {
           if (objLocal.m_objSpliceInsert.splice_event_cancel_indicator == 0) {
             if (objLocal.m_objSpliceInsert.out_of_network_indicator) {
@@ -153,7 +153,7 @@ bool EsParserSCTE35::ParseInternal(const uint8_t* data,
             }
           }
         } else {
-          LOG(INFO)<< pts << "SCTE35 text: "<< objLocal.GetText(false)<<std::endl;
+          DLOG(INFO)<< pts << "SCTE35 text: "<< objLocal.GetText(false)<<std::endl;
         }
       } else {
         sent_test_++;
