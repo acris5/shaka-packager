@@ -187,16 +187,11 @@ class EsParserTeletextTest : public ::testing::Test {
 };
 
 TEST_F(EsParserTeletextTest, descriptor_substreams_has_index_888_language_cat) {
-  auto on_new_stream = std::bind(&EsParserTeletextTest::OnNewStreamInfo, this, 
-                            std::placeholders::_1, std::placeholders::_2);
-
-  auto on_emit_text = std::bind(&EsParserTeletextTest::OnEmitTextSample,this,
-                            std::placeholders::_1, std::placeholders::_2);
+  auto on_new_stream = std::bind(&EsParserTeletextTest::OnNewStreamInfo, this, pes_pid, std::placeholders::_1);
+  auto on_emit_text = std::bind(&EsParserTeletextTest::OnEmitTextSample, this, pes_pid, std::placeholders::_1);
   
   std::unique_ptr<EsParserTeletext> es_parser_teletext(new EsParserTeletext(
-      pes_pid, std::bind(&EsParserTeletextTest::OnNewStreamInfo, this, std::placeholders::_1, std::placeholders::_2), 
-               std::bind(&EsParserTeletextTest::OnEmitTextSample,this, std::placeholders::_1, std::placeholders::_2), 
-                            DESCRIPTOR, 12));
+      pes_pid, on_new_stream, on_emit_text, DESCRIPTOR, 12));
 
   const auto parse_result =
       es_parser_teletext->Parse(PES_283413, sizeof(PES_283413), 283413, 0);
@@ -213,12 +208,9 @@ TEST_F(EsParserTeletextTest, descriptor_substreams_has_index_888_language_cat) {
 }
 
 TEST_F(EsParserTeletextTest, pes_283413_line_emitted_on_next_pes) {
-  auto on_new_stream = std::bind(&EsParserTeletextTest::OnNewStreamInfo, this, 
-                            std::placeholders::_1, std::placeholders::_2);
-
-  auto on_emit_text = std::bind(&EsParserTeletextTest::OnEmitTextSample, this, 
-                            std::placeholders::_1, std::placeholders::_2);
-
+  auto on_new_stream = std::bind(&EsParserTeletextTest::OnNewStreamInfo, this, pes_pid, std::placeholders::_1);
+  auto on_emit_text = std::bind(&EsParserTeletextTest::OnEmitTextSample, this, pes_pid, std::placeholders::_1);
+  
   std::unique_ptr<EsParserTeletext> es_parser_teletext(new EsParserTeletext(
       pes_pid, on_new_stream, on_emit_text, DESCRIPTOR, 12));
 
@@ -237,12 +229,9 @@ TEST_F(EsParserTeletextTest, pes_283413_line_emitted_on_next_pes) {
 }
 
 TEST_F(EsParserTeletextTest, multiple_lines_with_same_pts) {
-  auto on_new_stream = std::bind(&EsParserTeletextTest::OnNewStreamInfo,this, 
-                            std::placeholders::_1, std::placeholders::_2);
-
-  auto on_emit_text = std::bind(&EsParserTeletextTest::OnEmitTextSample,this, 
-                            std::placeholders::_1, std::placeholders::_2);
-
+  auto on_new_stream = std::bind(&EsParserTeletextTest::OnNewStreamInfo, this, pes_pid, std::placeholders::_1);
+  auto on_emit_text = std::bind(&EsParserTeletextTest::OnEmitTextSample, this, pes_pid, std::placeholders::_1);
+  
   std::unique_ptr<EsParserTeletext> es_parser_teletext(new EsParserTeletext(
       pes_pid, on_new_stream, on_emit_text, DESCRIPTOR, 12));
 

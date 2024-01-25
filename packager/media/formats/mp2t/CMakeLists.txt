@@ -74,7 +74,7 @@ ac3_header_unittest.cc
 adts_header_unittest.cc
 es_parser_h264_unittest.cc
 es_parser_h26x_unittest.cc
-#es_parser_teletext_unittest.cc
+es_parser_teletext_unittest.cc
 mp2t_media_parser_unittest.cc
 mpeg1_header_unittest.cc
 pes_packet_generator_unittest.cc
