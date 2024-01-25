@@ -4,6 +4,11 @@
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
+#include <packager/app/packager_main.h>
+#include <iostream>
+#include <nlohmann/json.hpp>
+#include <sstream>
+
 #include <iostream>
 #include <optional>
 
@@ -60,7 +65,7 @@ ABSL_FLAG(bool,
           "If enabled, only use one thread when generating content.");
 
 namespace shaka {
-namespace {
+namespace main_func {
 
 const char kUsage[] =
     "%s [flags] <stream_descriptor> ...\n\n"
@@ -129,13 +134,6 @@ const char kDrmLabelLabel[] = "label";
 const char kKeyIdLabel[] = "key_id";
 const char kKeyLabel[] = "key";
 const char kKeyIvLabel[] = "iv";
-
-enum ExitStatus {
-  kSuccess = 0,
-  kArgumentValidationFailed,
-  kPackagingFailed,
-  kInternalError,
-};
 
 bool GetWidevineSigner(WidevineSigner* signer) {
   signer->signer_name = absl::GetFlag(FLAGS_signer);
@@ -534,6 +532,122 @@ std::optional<PackagingParams> GetPackagingParams() {
   return packaging_params;
 }
 
+using json = nlohmann::json;
+
+std::optional<PackagingParams> PackagerParamsFromJSON(
+    const char* json_string_params) {
+  int argc;
+
+  json json_params = json::parse(json_string_params);
+  // find an entry
+  if (!json_params.contains("streams")) {
+    std::cout << "Nothing to work on. Return immediately" << std::endl;
+    return std::nullopt;
+  }
+  argc = json_params.size() - 1;
+  std::cout << "Shaka found " << json_params["streams"].size()
+            << " streams and " << argc << " params" << std::endl;
+
+  char prgm_name[] = "packager";
+  std::vector<char*> argv;
+  std::vector<std::string> arguments = {prgm_name};
+  // special iterator member functions for objects
+  for (json::iterator it = json_params.begin(); it != json_params.end(); ++it) {
+    if (it.key() != "streams") {
+      arguments.emplace_back("--" + it.key());
+      if (it.value().is_number())
+        arguments.push_back(it.value().dump());
+      else if (it.value().is_boolean()) {
+        if (!it.value().template get<bool>())
+          arguments.push_back("false");
+      } else if (it.value().is_string())
+        arguments.push_back(it.value().template get<std::string>());
+    }
+  }
+  for (const auto& arg : arguments) {
+    argv.push_back((char*)arg.data());
+  }
+  argv.push_back(nullptr);
+
+  // Set up logging.
+
+  absl::FlagsUsageConfig flag_config;
+  flag_config.version_string = []() -> std::string {
+    return "packager version " + shaka::Packager::GetLibraryVersion() + "\n";
+  };
+  flag_config.contains_help_flags =
+      [](absl::string_view flag_file_name) -> bool { return true; };
+  absl::SetFlagsUsageConfig(flag_config);
+
+  argc = argv.size() - 1;
+  char** arg_values = argv.data();
+
+  auto usage = absl::StrFormat(kUsage, prgm_name);
+  absl::SetProgramUsageMessage(usage);
+
+  auto remaining_args = absl::ParseCommandLine(argc, arg_values);
+  if (absl::GetFlag(FLAGS_licenses)) {
+    for (const char* line : kLicenseNotice)
+      std::cout << line << std::endl;
+    return std::nullopt;
+  }
+
+  if (remaining_args.size() < 1) {
+    std::cerr << "Usage: " << absl::ProgramUsageMessage();
+    return std::nullopt;
+  }
+
+  if (absl::GetFlag(FLAGS_quiet)) {
+    absl::SetMinLogLevel(absl::LogSeverityAtLeast::kWarning);
+  }
+
+  handle_vlog_flags();
+  absl::InitializeLog();
+
+  if (!ValidateWidevineCryptoFlags() || !ValidateRawKeyCryptoFlags() ||
+      !ValidatePRCryptoFlags() || !ValidateCryptoFlags() ||
+      !ValidateRetiredFlags()) {
+    return std::nullopt;
+  }
+
+  return GetPackagingParams();
+}
+
+std::optional<std::vector<shaka::StreamDescriptor>> PackagerStreamsFromJSON(
+    const char* json_string_params) {
+  json json_params = json::parse(json_string_params);
+  // find an entry
+
+  std::vector<shaka::StreamDescriptor> stream_descriptors;
+  // int argc = json_params["streams"].size() - 1;
+  for (json::iterator it = json_params["streams"].begin();
+       it != json_params["streams"].end(); ++it) {
+    std::ostringstream stream_desc;
+    for (auto& el : it.value().items()) {
+      if (el.value().is_number())
+        stream_desc << el.key() << "=" << el.value().dump() << ",";
+      else if (el.value().is_boolean()) {
+        if (!el.value().template get<bool>())
+          stream_desc << el.key() << "=false,";
+        else
+          stream_desc << el.key() << "=true,";
+      } else if (el.value().is_string())
+        stream_desc << el.key() << "=" << el.value().template get<std::string>()
+                    << ",";
+    }
+    std::string st = stream_desc.str();
+    if (!st.empty()) {
+      st.pop_back();
+      std::optional<StreamDescriptor> stream_descriptor =
+          ParseStreamDescriptor(st);
+      if (!stream_descriptor)
+        return std::nullopt;
+      stream_descriptors.push_back(stream_descriptor.value());
+    }
+  }
+  return stream_descriptors;
+};
+
 int PackagerMain(int argc, char** argv) {
   absl::FlagsUsageConfig flag_config;
   flag_config.version_string = []() -> std::string {
@@ -601,40 +715,5 @@ int PackagerMain(int argc, char** argv) {
   return kSuccess;
 }
 
-}  // namespace
+}  // namespace main_func
 }  // namespace shaka
-
-#if defined(OS_WIN)
-// Windows wmain, which converts wide character arguments to UTF-8.
-int wmain(int argc, wchar_t* argv[], wchar_t* envp[]) {
-  std::unique_ptr<char*[], std::function<void(char**)>> utf8_argv(
-      new char*[argc], [argc](char** utf8_args) {
-        // TODO(tinskip): This leaks, but if this code is enabled, it crashes.
-        // Figure out why. I suspect gflags does something funny with the
-        // argument array.
-        // for (int idx = 0; idx < argc; ++idx)
-        //   delete[] utf8_args[idx];
-        delete[] utf8_args;
-      });
-  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-
-  for (int idx = 0; idx < argc; ++idx) {
-    std::string utf8_arg(converter.to_bytes(argv[idx]));
-    utf8_arg += '\0';
-    utf8_argv[idx] = new char[utf8_arg.size()];
-    memcpy(utf8_argv[idx], &utf8_arg[0], utf8_arg.size());
-  }
-
-  // Because we just converted wide character args into UTF8, and because
-  // std::filesystem::u8path is used to interpret all std::string paths as
-  // UTF8, we should set the locale to UTF8 as well, for the transition point
-  // to C library functions like fopen to work correctly with non-ASCII paths.
-  std::setlocale(LC_ALL, ".UTF8");
-
-  return shaka::PackagerMain(argc, utf8_argv.get());
-}
-#else
-int main(int argc, char** argv) {
-  return shaka::PackagerMain(argc, argv);
-}
-#endif  // defined(OS_WIN)
