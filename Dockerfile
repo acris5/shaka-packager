@@ -6,7 +6,7 @@ RUN apk update && apk add --no-cache \
         bsd-compat-headers linux-headers \
         build-base cmake git ninja python3
 
-RUN apk update && apk add nlohmann-json nano go
+RUN apk update && apk add nano go
 
 # Build shaka-packager from the current directory, rather than what has been
 # merged.
