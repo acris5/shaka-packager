@@ -156,6 +156,7 @@ set(libpackager_ext_deps
   hex_bytes_flags
   libpackager
   license_notice
+  nlohmann_json
   string_utils
 )
 
@@ -244,6 +245,7 @@ target_link_libraries(packager
   hex_bytes_flags
   libpackager
   license_notice
+  nlohmann_json
   string_utils
 )
 
