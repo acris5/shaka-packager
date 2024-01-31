@@ -19,6 +19,8 @@ CallbackFile::CallbackFile(const char* file_name, const char* mode)
 CallbackFile::~CallbackFile() {}
 
 bool CallbackFile::Close() {
+  if (callback_params_->close_func)
+    callback_params_->close_func(name_);
   delete this;
   return true;
 }
@@ -70,6 +72,18 @@ bool CallbackFile::Open() {
     return false;
   }
   return ParseCallbackFileName(file_name(), &callback_params_, &name_);
+}
+
+bool CallbackFile::Delete(const char* file_name) {
+  std::string path;
+  const BufferCallbackParams* callback_params = nullptr;
+  if (!ParseCallbackFileName(file_name, &callback_params, &path))
+    return false;
+
+  if (!callback_params || !callback_params->remove_func)
+    return false;
+
+  return callback_params->remove_func(path);
 }
 
 }  // namespace shaka

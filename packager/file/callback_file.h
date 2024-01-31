@@ -31,6 +31,11 @@ class CallbackFile : public File {
   bool Tell(uint64_t* position) override;
   /// @}
 
+  /// Delete a callback file.
+  /// @param file_name is the path of the file to be deleted.
+  /// @return true if successful, or false otherwise.
+  static bool Delete(const char* file_name);
+
  protected:
   ~CallbackFile() override;
 

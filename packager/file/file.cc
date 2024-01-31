@@ -73,6 +73,10 @@ bool DeleteLocalFile(const char* file_name) {
   return LocalFile::Delete(file_name);
 }
 
+bool DeleteCallbackFile(const char* file_name) {
+  return CallbackFile::Delete(file_name);
+}
+
 bool WriteLocalFileAtomically(const char* file_name,
                               const std::string& contents) {
   const auto file_path = std::filesystem::u8path(file_name);
@@ -137,7 +141,7 @@ static const FileTypeInfo kFileTypeInfo[] = {
     },
     {kUdpFilePrefix, &CreateUdpFile, nullptr, nullptr},
     {kMemoryFilePrefix, &CreateMemoryFile, &DeleteMemoryFile, nullptr},
-    {kCallbackFilePrefix, &CreateCallbackFile, nullptr, nullptr},
+    {kCallbackFilePrefix, &CreateCallbackFile, &DeleteCallbackFile, nullptr},
     {kHttpFilePrefix, &CreateHttpFile, nullptr, nullptr},
     {kHttpsFilePrefix, &CreateHttpsFile, nullptr, nullptr},
 };
@@ -307,6 +311,17 @@ bool File::WriteFileAtomically(const char* file_name,
   DCHECK(file_type);
   if (file_type->atomic_write_function)
     return file_type->atomic_write_function(real_file_name.data(), contents);
+
+  if (strncmp(file_name, kCallbackFilePrefix, strlen(kCallbackFilePrefix)) == 0)
+  {
+    std::string path;
+    std::string real_name = std::string(real_file_name);
+    const BufferCallbackParams* callback_params = nullptr;
+    if (File::ParseCallbackFileName(real_name, &callback_params, &path)) {
+      if (callback_params->atomic_write_func)
+        return callback_params->atomic_write_func(path, contents);
+    }
+  }
 
   // Provide a default implementation which may not be atomic unfortunately.
 

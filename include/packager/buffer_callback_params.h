@@ -29,6 +29,13 @@ struct BufferCallbackParams {
   std::function<
       int64_t(const std::string& name, const void* buffer, uint64_t size)>
       write_func;
+
+  std::function<
+      bool(const std::string& name, const std::string& contents)>
+      atomic_write_func;
+
+  std::function<void(const std::string& name)> close_func;
+  std::function<bool(const std::string& name)> remove_func;
 };
 
 }  // namespace shaka
