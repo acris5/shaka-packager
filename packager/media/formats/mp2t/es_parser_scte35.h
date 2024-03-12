@@ -49,7 +49,7 @@ class EsParserSCTE35 : public EsParser {
   EmitSCTE35EventCB emit_scte35_event_cb_;
   bool sent_info_;
   int sent_test_;
- bool test_sent_out_ = false;
+  //bool test_sent_out_ = false;
   int64_t last_pts_;
 };
 
