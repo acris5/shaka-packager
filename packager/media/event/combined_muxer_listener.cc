@@ -101,5 +101,12 @@ void CombinedMuxerListener::OnCueEvent(int64_t timestamp,
   }
 }
 
+void CombinedMuxerListener::OnSCTE35Event(int64_t timestamp, int64_t duration,
+                                       const std::string& cue_data) {
+  for (auto& listener : muxer_listeners_) {
+    listener->OnSCTE35Event(timestamp, duration, cue_data);
+  }
+}
+
 }  // namespace media
 }  // namespace shaka

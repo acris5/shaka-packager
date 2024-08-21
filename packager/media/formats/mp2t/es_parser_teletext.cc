@@ -11,6 +11,7 @@
 #include <packager/media/formats/mp2t/es_parser_teletext_tables.h>
 #include <packager/media/formats/mp2t/mp2t_common.h>
 #include <iostream>
+//#include <packager/media/base/text_stream_info.h>
 
 namespace shaka {
 namespace media {
@@ -88,13 +89,15 @@ bool ParseSubtitlingDescriptor(
     lang[0] = static_cast<char>((lang_code >> 16) & 0xff);
     lang[1] = static_cast<char>((lang_code >> 8) & 0xff);
     lang[2] = static_cast<char>((lang_code >> 0) & 0xff);
-
+    
     const uint16_t index = magazine_number * 100 + page_number;
+    LOG(INFO)<<"Text Lang: "<< index<<" : "<<lang;
     result.emplace(index, std::move(lang));
   }
 
   return true;
 }
+
 
 }  // namespace
 
@@ -258,13 +261,15 @@ bool EsParserTeletext::ParseDataBlock(const int64_t pts,
       charset_code_ = charset_code;
       UpdateCharset();
     }
-
     return false;
 
   } else if (packet_nr == 26) {
     ParsePacket26(data_block);
     return false;
 
+  } else if (packet_nr == 28) {
+    ParsePacket28(data_block);
+    return false;
   } else if (packet_nr > 26) {
     return false;
   }
@@ -273,40 +278,66 @@ bool EsParserTeletext::ParseDataBlock(const int64_t pts,
   return true;
 }
 
-void EsParserTeletext::UpdateCharset() {
-  memcpy(current_charset_, TELETEXT_CHARSET_G0_LATIN, sizeof(TELETEXT_CHARSET_G0_LATIN));
-  if (charset_code_ > 7) {
-    return;
+void EsParserTeletext::set_g0_charset(uint32_t triplet)
+{
+  // ETS 300 706, Table 32
+  if ((triplet & 0x3c00) == 0x1000)
+  {
+    if ((triplet & 0x0380) == 0x0000)
+      default_g0_charset = CYRILLIC1;
+    else if ((triplet & 0x0380) == 0x0200)
+      default_g0_charset = CYRILLIC2;
+    else if ((triplet & 0x0380) == 0x0280)
+      default_g0_charset = CYRILLIC3;
+    else
+      default_g0_charset = LATIN;
   }
-  const auto teletext_national_subset =
-      static_cast<TELETEXT_NATIONAL_SUBSET>(charset_code_);
+  else
+    default_g0_charset = LATIN;
+    //selecting charset triplet: 70144: default_g0_charset: 2
+}
 
-  switch (teletext_national_subset) {
-    case TELETEXT_NATIONAL_SUBSET::ENGLISH:
-      UpdateNationalSubset(TELETEXT_NATIONAL_SUBSET_ENGLISH);
-      break;
-    case TELETEXT_NATIONAL_SUBSET::FRENCH:
-      UpdateNationalSubset(TELETEXT_NATIONAL_SUBSET_FRENCH);
-      break;
-    case TELETEXT_NATIONAL_SUBSET::SWEDISH_FINNISH_HUNGARIAN:
-      UpdateNationalSubset(TELETEXT_NATIONAL_SUBSET_SWEDISH_FINNISH_HUNGARIAN);
-      break;
-    case TELETEXT_NATIONAL_SUBSET::CZECH_SLOVAK:
-      UpdateNationalSubset(TELETEXT_NATIONAL_SUBSET_CZECH_SLOVAK);
-      break;
-    case TELETEXT_NATIONAL_SUBSET::GERMAN:
-      UpdateNationalSubset(TELETEXT_NATIONAL_SUBSET_GERMAN);
-      break;
-    case TELETEXT_NATIONAL_SUBSET::PORTUGUESE_SPANISH:
-      UpdateNationalSubset(TELETEXT_NATIONAL_SUBSET_PORTUGUESE_SPANISH);
-      break;
-    case TELETEXT_NATIONAL_SUBSET::ITALIAN:
-      UpdateNationalSubset(TELETEXT_NATIONAL_SUBSET_ITALIAN);
-      break;
-    case TELETEXT_NATIONAL_SUBSET::NONE:
-    default:
-      break;
-  }
+void EsParserTeletext::UpdateG0Charset() {
+    memcpy(current_charset_, TELETEXT_CHARSETS_G0[default_g0_charset], 96 * 3); //Update G0 variant
+  
+}
+
+void EsParserTeletext::UpdateCharset() {
+  
+    memcpy(current_charset_, TELETEXT_CHARSET_G0_LATIN, 96 * 3);
+    if (charset_code_ > 7) {
+      return;
+    }
+    const auto teletext_national_subset =
+        static_cast<TELETEXT_NATIONAL_SUBSET>(charset_code_);
+
+    switch (teletext_national_subset) {
+      case TELETEXT_NATIONAL_SUBSET::ENGLISH:
+        UpdateNationalSubset(TELETEXT_NATIONAL_SUBSET_ENGLISH);
+        break;
+      case TELETEXT_NATIONAL_SUBSET::FRENCH:
+        UpdateNationalSubset(TELETEXT_NATIONAL_SUBSET_FRENCH);
+        break;
+      case TELETEXT_NATIONAL_SUBSET::SWEDISH_FINNISH_HUNGARIAN:
+        UpdateNationalSubset(TELETEXT_NATIONAL_SUBSET_SWEDISH_FINNISH_HUNGARIAN);
+        break;
+      case TELETEXT_NATIONAL_SUBSET::CZECH_SLOVAK:
+        UpdateNationalSubset(TELETEXT_NATIONAL_SUBSET_CZECH_SLOVAK);
+        break;
+      case TELETEXT_NATIONAL_SUBSET::GERMAN:
+        UpdateNationalSubset(TELETEXT_NATIONAL_SUBSET_GERMAN);
+        break;
+      case TELETEXT_NATIONAL_SUBSET::PORTUGUESE_SPANISH:
+        UpdateNationalSubset(TELETEXT_NATIONAL_SUBSET_PORTUGUESE_SPANISH);
+        break;
+      case TELETEXT_NATIONAL_SUBSET::ITALIAN:
+        UpdateNationalSubset(TELETEXT_NATIONAL_SUBSET_ITALIAN);
+        break;
+      case TELETEXT_NATIONAL_SUBSET::NONE:
+      default:
+        break;
+    }
+  
 }
 
 void EsParserTeletext::SendPending(const uint16_t index, const int64_t pts) {
@@ -591,6 +622,44 @@ void EsParserTeletext::ParsePacket26(const uint8_t* data_block) {
               TELETEXT_CHARSET_G0_LATIN[(data & 0x7f) - 0x20]));
     }
   }
+}
+
+void EsParserTeletext::ParsePacket28(const uint8_t* data_block) {
+  // TODO:
+		//   ETS 300 706, chapter 9.4.7: Packet X/28/4
+		//   Where packets 28/0 and 28/4 are both transmitted as part of a page, packet 28/0 takes precedence over 28/4 for all but the colour map entry coding.
+		uint8_t designation_code = TELETEXT_HAMMING_8_4[data_block[0]] ;
+    if ((designation_code == 0) || (designation_code == 4))
+		{
+			// ETS 300 706, chapter 9.4.2: Packet X/28/0 Format 1
+			// ETS 300 706, chapter 9.4.7: Packet X/28/4
+			uint32_t bytes  = (TELETEXT_BITREVERSE_8[data_block[3]] << 16) | (TELETEXT_BITREVERSE_8[data_block[2]] << 8) | TELETEXT_BITREVERSE_8[data_block[1]];
+      uint32_t triplet0 = 0;
+      if (!Hamming_24_18(bytes, triplet0)) {
+        LOG(ERROR) <<  "! Unrecoverable hamming data error; ";
+      }
+			if (triplet0 == 0xffffffff)
+			{
+				// invalid data (HAM24/18 uncorrectable error detected), skip group
+				LOG(ERROR) <<  "! Unrecoverable data error; UNHAM24/18()="<< triplet0;
+			}
+			else
+			{
+				// ETS 300 706, chapter 9.4.2: Packet X/28/0 Format 1 only
+				if ((triplet0 & 0x0f) == 0x00)
+				{
+					// ETS 300 706, Table 32
+					set_g0_charset(triplet0); // Deciding G0 Character Set
+					if (default_g0_charset == LATIN)
+					{
+						charset_code_ = (triplet0 & 0x3f80) >> 7;
+						UpdateCharset();
+					} else {
+            UpdateG0Charset();
+          }
+				}
+			}
+		}
 }
 
 void EsParserTeletext::UpdateNationalSubset(

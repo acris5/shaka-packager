@@ -30,6 +30,8 @@ add_library(media_base STATIC
     key_fetcher.cc
     key_source.cc
     language_utils.cc
+    scte35_stream_info.cc
+    scte35_event.cc
     media_handler.cc
     media_sample.cc
     muxer.cc

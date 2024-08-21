@@ -77,6 +77,25 @@ Status Muxer::Process(std::unique_ptr<StreamData> stream_data) {
     case StreamDataType::kTextSample:
       return AddTextSample(stream_data->stream_index,
                            *stream_data->text_sample);
+    case StreamDataType::kScte35Event:
+      if (muxer_listener_) {
+        const int64_t time_scale =
+            streams_[stream_data->stream_index]->time_scale();
+        const double time_in_seconds = stream_data->scte35_event->start_time()/90000;
+        const int64_t scaled_time =
+            static_cast<int64_t>(time_in_seconds * time_scale);
+        LOG(INFO) <<"SCTE-35 processed in muxer: "<<stream_data->scte35_event->start_time()<<" duration: "<<stream_data->scte35_event->duration()<<std::endl;
+        muxer_listener_->OnSCTE35Event(scaled_time, stream_data->scte35_event->duration(),
+                                    stream_data->scte35_event->id());
+
+        // Finalize and re-initialize Muxer to generate different content files.
+        // Uncomment it after fixing errors
+       /* if (!output_file_template_.empty()) {
+          RETURN_IF_ERROR(Finalize());
+          RETURN_IF_ERROR(ReinitializeMuxer(scaled_time));
+        }*/
+      }
+      break;
     case StreamDataType::kCueEvent:
       if (muxer_listener_) {
         const int64_t time_scale =
@@ -117,6 +136,10 @@ Status Muxer::AddMediaSample(size_t stream_id, const MediaSample& sample) {
 Status Muxer::AddTextSample(size_t stream_id, const TextSample& sample) {
   UNUSED(stream_id);
   UNUSED(sample);
+  return Status::OK;
+}
+
+Status Muxer::AddScte35Event(size_t stream_id, const Scte35Event& sample) {
   return Status::OK;
 }
 

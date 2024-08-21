@@ -19,6 +19,17 @@ namespace shaka {
 namespace media {
 namespace mp2t {
 
+typedef enum
+{
+	LATIN = 0,
+	CYRILLIC1,
+	CYRILLIC2,
+	CYRILLIC3,
+	GREEK,
+	ARABIC,
+	HEBREW
+} g0_charsets_type;
+
 class EsParserTeletext : public EsParser {
  public:
   EsParserTeletext(const uint32_t pid,
@@ -61,7 +72,10 @@ class EsParserTeletext : public EsParser {
   void SendPending(const uint16_t index, const int64_t pts);
   TextRow BuildRow(const uint8_t* data_block, const uint8_t row) const;
   void ParsePacket26(const uint8_t* data_block);
+  void ParsePacket28(const uint8_t* data_block);
   void UpdateNationalSubset(const uint8_t national_subset[13][3]);
+  void set_g0_charset(uint32_t triplet);
+  void UpdateG0Charset();
 
   static void SetPacket26ReplacementString(
       RowColReplacementMap& replacement_map,
@@ -79,6 +93,7 @@ class EsParserTeletext : public EsParser {
   std::unordered_map<uint16_t, TextBlock> page_state_;
   uint8_t charset_code_;
   char current_charset_[96][3];
+  g0_charsets_type default_g0_charset;
   int64_t last_pts_;
 };
 

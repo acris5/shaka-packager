@@ -431,16 +431,15 @@ void Representation::AddSegmentInfo(int64_t start_time,
                    << " > kRoundingErrorGrace (" << kRoundingErrorGrace
                    << "). The new segment starts at " << start_time
                    << " but the previous segment ends at "
-                   << previous_segment_end_time << ".";
+                   << previous_segment_end_time << "."<<std::endl;
     }
 
     // No overlapping segments.
     if (start_time < previous_segment_end_time - kRoundingErrorGrace) {
-      LOG(WARNING)
-          << RepresentationAsString()
+      LOG(WARNING) << RepresentationAsString()
           << " Segments should not be overlapping. The new segment starts at "
           << start_time << " but the previous segment ends at "
-          << previous_segment_end_time << ".";
+          << previous_segment_end_time << "."<<std::endl;
     }
   }
   segment_infos_.push_back(

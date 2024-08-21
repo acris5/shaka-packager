@@ -107,7 +107,7 @@ std::unique_ptr<MuxerListener> MuxerListenerFactory::CreateListener(
   // multi-codec stream (e.g. DolbyVision proifile 8); otherwise the second
   // child is ignored. Right now the only use case is DolbyVision profile 8
   // which contains two codecs.
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < stream.codecs_count; i++) {
     std::unique_ptr<CombinedMuxerListener> combined_listener(
         new CombinedMuxerListener);
     if (output_media_info_) {
@@ -119,7 +119,7 @@ std::unique_ptr<MuxerListener> MuxerListenerFactory::CreateListener(
     if (mpd_notifier_ && !stream.hls_only) {
       combined_listener->AddListener(
           CreateMpdListenerInternal(stream, mpd_notifier_));
-    }
+    } 
 
     if (hls_notifier_ && !stream.dash_only) {
       for (auto& listener :

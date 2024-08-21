@@ -139,7 +139,9 @@ bool LocalFile::Delete(const char* file_name) {
   auto file_path = std::filesystem::u8path(file_name);
   std::error_code ec;
   // On error (ec truthy), remove() will return false anyway.
-  return std::filesystem::remove(file_path, ec);
+  if (std::filesystem::exists(file_path))
+    return std::filesystem::remove(file_path, ec);
+  else return true;
 }
 
 }  // namespace shaka

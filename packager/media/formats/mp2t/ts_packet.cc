@@ -107,13 +107,14 @@ bool TsPacket::ParseHeader(const uint8_t* buf) {
   random_access_indicator_ = false;
 
   // Done since no adaptation field.
-  if ((adaptation_field_control & 0x2) == 0)
+  if ((adaptation_field_control & 0x2) == 0){
     return true;
+  }
 
   // Read the adaptation field if needed.
   int adaptation_field_length;
   RCHECK(bit_reader.ReadBits(8, &adaptation_field_length));
-  DVLOG(LOG_LEVEL_TS) << "adaptation_field_length=" << adaptation_field_length;
+  //DVLOG(LOG_LEVEL_TS) << "adaptation_field_length=" << adaptation_field_length;
   payload_ += 1;
   payload_size_ -= 1;
   if ((adaptation_field_control & 0x1) == 0 &&
@@ -129,12 +130,10 @@ bool TsPacket::ParseHeader(const uint8_t* buf) {
     // adaptation_field_length = 183
     return false;
   }
-
   // adaptation_field_length = '0' is used to insert a single stuffing byte
   // in the adaptation field of a transport stream packet.
   if (adaptation_field_length == 0)
     return true;
-
   bool status = ParseAdaptationField(&bit_reader, adaptation_field_length);
   payload_ += adaptation_field_length;
   payload_size_ -= adaptation_field_length;
@@ -214,7 +213,7 @@ bool TsPacket::ParseAdaptationField(BitReader* bit_reader,
     RCHECK(stuffing_byte == 0xff);
   }
 
-  DVLOG(LOG_LEVEL_TS) << "random_access_indicator=" << random_access_indicator_;
+  //DVLOG(LOG_LEVEL_TS) << "random_access_indicator=" << random_access_indicator_;
   return true;
 }
 

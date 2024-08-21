@@ -55,6 +55,7 @@ enum MediaContainerName {
   CONTAINER_WEBVTT,   // WebVTT file.
   CONTAINER_WTV,      // WTV (Windows Television)
   CONTAINER_WVM,      // WVM (Widevine Classic Format)
+  EVENTS_SCTE35,       //scte35 events
   CONTAINER_MAX       // Must be last
 };
 

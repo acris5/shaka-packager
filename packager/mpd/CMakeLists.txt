@@ -20,6 +20,8 @@ add_library(mpd_builder STATIC
   base/adaptation_set.h
   base/content_protection_element.cc
   base/content_protection_element.h
+  base/event_stream.cc
+  base/event_stream.h
   base/mpd_builder.cc
   base/mpd_builder.h
   base/mpd_notifier_util.cc

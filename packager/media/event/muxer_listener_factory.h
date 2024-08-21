@@ -61,6 +61,8 @@ class MuxerListenerFactory {
     bool dash_only = false;
     std::optional<uint32_t> index;
     std::string dash_label;
+
+    int codecs_count = 2;
   };
 
   /// Create a new muxer listener.

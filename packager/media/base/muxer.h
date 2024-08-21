@@ -95,6 +95,10 @@ class Muxer : public MediaHandler {
   // handle text samples will need to replace this.
   virtual Status AddTextSample(size_t stream_id, const TextSample& sample);
 
+    // Add a new scte35 event.  This does nothing by default; so subclasses that
+  // handle scte35 events will need to replace this.
+  virtual Status AddScte35Event(size_t stream_id, const Scte35Event& sample);
+
   // Finalize the segment or subsegment.
   virtual Status FinalizeSegment(
       size_t stream_id,

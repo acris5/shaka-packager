@@ -53,6 +53,7 @@ class MpdBuilder {
   ///         return a new Period.
   virtual Period* GetOrCreatePeriod(double start_time_in_seconds);
 
+  virtual Period* GetPeriodForEvents(double start_time_in_seconds);
   /// Writes the MPD to the given string.
   /// @param[out] output is an output string where the MPD gets written.
   /// @return true on success, false otherwise.
@@ -123,6 +124,7 @@ class MpdBuilder {
 
   uint32_t period_counter_ = 0;
   uint32_t representation_counter_ = 0;
+  uint32_t events_counter_ = 0;
 
   // By default, this returns the current time. This can be injected for
   // testing.

@@ -22,10 +22,12 @@ add_library(mp2t STATIC
   es_parser_h265.h
   es_parser_h26x.cc
   es_parser_h26x.h
+  es_parser_scte35.cc
+  es_parser_scte35.h
+  es_parser.h
   es_parser_teletext.cc
   es_parser_teletext.h
   es_parser_teletext_tables.h
-  es_parser.h
   mp2t_media_parser.cc
   mp2t_media_parser.h
   mpeg1_header.cc
@@ -61,6 +63,7 @@ add_library(mp2t STATIC
 target_link_libraries(mp2t
   absl::log
   dvb
+  scte35
   media_base
   media_codecs
   media_crypto

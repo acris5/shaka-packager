@@ -14,6 +14,7 @@
 #include <packager/media/base/media_sample.h>
 #include <packager/media/base/stream_info.h>
 #include <packager/media/base/text_sample.h>
+#include <packager/media/base/scte35_event.h>
 #include <packager/status.h>
 
 namespace shaka {
@@ -75,7 +76,7 @@ struct StreamData {
   std::shared_ptr<const MediaSample> media_sample;
   std::shared_ptr<const TextSample> text_sample;
   std::shared_ptr<const SegmentInfo> segment_info;
-  std::shared_ptr<const Scte35Event> scte35_event;
+  std::shared_ptr<const SCTE35Event> scte35_event;
   std::shared_ptr<const CueEvent> cue_event;
 
   static std::unique_ptr<StreamData> FromStreamInfo(
@@ -120,7 +121,7 @@ struct StreamData {
 
   static std::unique_ptr<StreamData> FromScte35Event(
       size_t stream_index,
-      std::shared_ptr<const Scte35Event> scte35_event) {
+      std::shared_ptr<const SCTE35Event> scte35_event) {
     std::unique_ptr<StreamData> stream_data(new StreamData);
     stream_data->stream_index = stream_index;
     stream_data->stream_data_type = StreamDataType::kScte35Event;
@@ -234,7 +235,7 @@ class MediaHandler {
   /// Dispatch the scte35 event to downstream handlers.
   Status DispatchScte35Event(
       size_t stream_index,
-      std::shared_ptr<const Scte35Event> scte35_event) const {
+      std::shared_ptr<const SCTE35Event> scte35_event) const {
     return Dispatch(
         StreamData::FromScte35Event(stream_index, std::move(scte35_event)));
   }

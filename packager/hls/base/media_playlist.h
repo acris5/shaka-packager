@@ -32,6 +32,9 @@ class HlsEntry {
     kExtKey,
     kExtDiscontinuity,
     kExtPlacementOpportunity,
+    kExtCueOut,
+    kExtCueCont,
+    kExtCueIn,
   };
   virtual ~HlsEntry();
 
@@ -157,6 +160,12 @@ class MediaPlaylist {
   /// Add #EXT-X-PLACEMENT-OPPORTUNITY for mid-roll ads. See
   /// https://support.google.com/dfp_premium/answer/7295798?hl=en.
   virtual void AddPlacementOpportunity();
+
+  virtual void AddScte35Event(int64_t timestamp, int64_t duration);
+
+  virtual void AddXCueOut(int64_t duration);
+  virtual void AddXCueCont(int64_t duration, float passed);
+  virtual void AddXCueIn();
 
   /// Write the playlist to |file_path|.
   /// This does not close the file.
@@ -307,6 +316,14 @@ class MediaPlaylist {
   };
   std::list<KeyFrameInfo> key_frames_;
 
+  struct Scte35 {
+  int64_t timestamp;
+  // Negative duration means Cue-in
+  int64_t duration;
+  //std::string cue_data;
+};
+  std::list<Scte35> scte35_events_;
+  Scte35 current_Scte35_ = {0, 0};
   DISALLOW_COPY_AND_ASSIGN(MediaPlaylist);
 };
 

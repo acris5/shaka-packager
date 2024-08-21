@@ -55,6 +55,8 @@ class WebVttParserTest : public testing::Test {
                   std::placeholders::_1, std::placeholders::_2),
         std::bind(&WebVttParserTest::NewTextSampleCB, this,
                   std::placeholders::_1, std::placeholders::_2),
+        std::bind(&WebVttParserTest::NewSCTE35SampleCB, this,
+                  std::placeholders::_1, std::placeholders::_2),
         nullptr);
   }
 
@@ -72,6 +74,10 @@ class WebVttParserTest : public testing::Test {
     EXPECT_EQ(stream_id, kStreamId);
     samples_.emplace_back(std::move(sample));
     return true;
+  }
+  
+  bool NewSCTE35SampleCB(uint32_t stream_id, std::shared_ptr<SCTE35Event> sample) {
+    return false;
   }
 
   std::shared_ptr<WebVttParser> parser_;

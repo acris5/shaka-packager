@@ -66,12 +66,13 @@ void MpdNotifyMuxerListener::OnMediaStart(const MuxerOptions& muxer_options,
                                           int32_t time_scale,
                                           ContainerType container_type) {
   std::unique_ptr<MediaInfo> media_info(new MediaInfo());
+  LOG(INFO)<<"MpdNotifyMuxerListener::OnMediaStart "<<StreamTypeToString(stream_info.stream_type());
   if (!internal::GenerateMediaInfo(muxer_options,
                                    stream_info,
                                    time_scale,
                                    container_type,
                                    media_info.get())) {
-    LOG(ERROR) << "Failed to generate MediaInfo from input.";
+    LOG(ERROR) <<"Failed to generate MediaInfo from input.";
     return;
   }
   for (const std::string& accessibility : accessibilities_)
@@ -244,6 +245,13 @@ void MpdNotifyMuxerListener::OnCueEvent(int64_t timestamp,
     event_info.type = EventInfoType::kCue;
     event_info.cue_event_info = {timestamp};
     event_info_.push_back(event_info);
+  }
+}
+
+void MpdNotifyMuxerListener::OnSCTE35Event(int64_t timestamp, int64_t duration,
+                                        const std::string& cue_data) {
+  if (mpd_notifier_->dash_profile() == DashProfile::kLive) {
+    mpd_notifier_->NotifySCTE35Event(timestamp, duration, cue_data);
   }
 }
 

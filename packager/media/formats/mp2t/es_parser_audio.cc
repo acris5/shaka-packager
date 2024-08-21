@@ -40,7 +40,8 @@ static bool LookForSyncWord(const uint8_t* raw_es,
                             int raw_es_size,
                             int pos,
                             int* new_pos,
-                            AudioHeader* audio_header) {
+                            AudioHeader* audio_header,
+                            bool last_audio_decoder_config_) {
   DCHECK_GE(pos, 0);
   DCHECK_LE(pos, raw_es_size);
 
@@ -83,6 +84,7 @@ static bool LookForSyncWord(const uint8_t* raw_es,
       continue;
 
     *new_pos = offset;
+    if (!last_audio_decoder_config_) LOG(INFO) << "audio LookForSyncWord success"<<std::endl;
     return true;
   }
 
@@ -134,7 +136,7 @@ bool EsParserAudio::Parse(const uint8_t* buf,
   // Look for every frame in the ES buffer starting at offset = 0
   int es_position = 0;
   while (LookForSyncWord(raw_es, raw_es_size, es_position, &es_position,
-                         audio_header_.get())) {
+                         audio_header_.get(), last_audio_decoder_config_!=nullptr)) {
     const uint8_t* frame_ptr = raw_es + es_position;
     DVLOG(LOG_LEVEL_ES) << "syncword @ pos=" << es_position
                         << " frame_size=" << audio_header_->GetFrameSize();
@@ -149,7 +151,7 @@ bool EsParserAudio::Parse(const uint8_t* buf,
       break;
 
     // Update the audio configuration if needed.
-    if (!UpdateAudioConfiguration(*audio_header_))
+    if (!UpdateAudioConfiguration(*audio_header_, pts))
       return false;
 
     // Get the PTS & the duration of this access unit.
@@ -197,7 +199,7 @@ void EsParserAudio::Reset() {
   last_audio_decoder_config_ = std::shared_ptr<AudioStreamInfo>();
 }
 
-bool EsParserAudio::UpdateAudioConfiguration(const AudioHeader& audio_header) {
+bool EsParserAudio::UpdateAudioConfiguration(const AudioHeader& audio_header, int64_t pts) {
   const uint8_t kAacSampleSizeBits(16);
 
   std::vector<uint8_t> audio_specific_config;
@@ -209,7 +211,7 @@ bool EsParserAudio::UpdateAudioConfiguration(const AudioHeader& audio_header) {
       // Audio configuration has not changed.
       return true;
     }
-    NOTIMPLEMENTED() << "Varying audio configurations are not supported.";
+    NOTIMPLEMENTED() << "ERROR audio stream!!! Varying audio configurations are not supported."<<std::endl;
     return false;
   }
 
@@ -251,6 +253,7 @@ bool EsParserAudio::UpdateAudioConfiguration(const AudioHeader& audio_header) {
         new AudioTimestampHelper(kMpeg2Timescale, extended_samples_per_second));
   }
 
+  LOG(INFO) << pts <<" Audio Init"<<std::endl;
   // Audio config notification.
   new_stream_info_cb_(last_audio_decoder_config_);
 

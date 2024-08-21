@@ -14,6 +14,7 @@
 #include <packager/mpd/base/mpd_notifier_util.h>
 #include <packager/mpd/base/mpd_utils.h>
 #include <packager/mpd/base/period.h>
+#include <packager/mpd/base/event_stream.h>
 #include <packager/mpd/base/representation.h>
 
 namespace shaka {
@@ -24,8 +25,10 @@ SimpleMpdNotifier::SimpleMpdNotifier(const MpdOptions& mpd_options)
       mpd_builder_(new MpdBuilder(mpd_options)),
       content_protection_in_adaptation_set_(
           mpd_options.mpd_params.generate_dash_if_iop_compliant_mpd) {
-  for (const std::string& base_url : mpd_options.mpd_params.base_urls)
+  for (const std::string& base_url : mpd_options.mpd_params.base_urls){
     mpd_builder_->AddBaseUrl(base_url);
+  }
+    
 }
 
 SimpleMpdNotifier::~SimpleMpdNotifier() {}
@@ -37,7 +40,7 @@ bool SimpleMpdNotifier::Init() {
 bool SimpleMpdNotifier::NotifyNewContainer(const MediaInfo& media_info,
                                            uint32_t* container_id) {
   DCHECK(container_id);
-
+  LOG(INFO)<<"NotifyNewMPDContainer "<<*container_id<<" path: "<<output_path_<<"; seq: "<<next_adaptation_set_id_<<std::endl;
   ContentType content_type = GetContentType(media_info);
   if (content_type == kContentTypeUnknown)
     return false;
@@ -175,6 +178,28 @@ bool SimpleMpdNotifier::NotifyCueEvent(uint32_t container_id,
     AddContentProtectionElements(media_info, representation);
   }
   representation_map_[representation->id()] = representation;
+  return true;
+}
+
+bool SimpleMpdNotifier::NotifySCTE35Event(int64_t timestamp, int64_t duration, const std::string& cue_data) {
+  if (duration>=0){
+    absl::MutexLock lock(&lock_);
+    auto it = representation_map_.begin();
+    if (it == representation_map_.end()) {
+      return false;
+    }
+    Representation* original_representation = it->second;
+    
+    const MediaInfo& media_info = original_representation->GetMediaInfo();
+    const double period_start_time_seconds =
+        static_cast<double>(timestamp) / media_info.reference_time_scale();
+    Period* period = mpd_builder_->GetPeriodForEvents(period_start_time_seconds);
+    DCHECK(period);
+    EventStream* event_stream = period->GetOrCreateEventStream();
+    event_stream->AddNewSCTE35Event(timestamp,duration,cue_data);
+  }
+
+  //TODO: check current Period; insert event if it is in future or current; remove events when outdated
   return true;
 }
 

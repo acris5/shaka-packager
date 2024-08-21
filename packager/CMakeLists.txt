@@ -119,12 +119,64 @@ set(libpackager_deps
   version
 )
 
+set(libpackager_ext_sources
+  app/ad_cue_generator_flags.cc
+  app/ad_cue_generator_flags.h
+  app/crypto_flags.cc
+  app/crypto_flags.h
+  app/hls_flags.cc
+  app/hls_flags.h
+  app/manifest_flags.cc
+  app/manifest_flags.h
+  app/mpd_flags.cc
+  app/mpd_flags.h
+  app/muxer_flags.cc
+  app/muxer_flags.h
+  app/packager_main_def.cc
+  app/packager_main_def.h
+  packager_ext.cc
+  packager_ext.h
+  #../include/packager/packager.h
+  app/playready_key_encryption_flags.cc
+  app/playready_key_encryption_flags.h
+  app/raw_key_encryption_flags.cc
+  app/raw_key_encryption_flags.h
+  app/protection_system_flags.cc
+  app/protection_system_flags.h
+  app/retired_flags.cc
+  app/retired_flags.h
+  app/stream_descriptor.cc
+  app/stream_descriptor.h
+  app/validate_flag.cc
+  app/validate_flag.h
+  app/widevine_encryption_flags.cc
+  app/widevine_encryption_flags.h
+)
+
+set(libpackager_ext_deps
+  absl::flags
+  absl::flags_parse
+  absl::log
+  absl::log_flags
+  absl::strings
+  hex_bytes_flags
+  libpackager
+  license_notice
+  nlohmann_json
+  string_utils
+)
+
 # A static library target is always built.
 
 if(BUILD_SHARED_LIBS)
   add_library(libpackager SHARED ${libpackager_sources})
   target_link_libraries(libpackager ${libpackager_deps})
   target_compile_definitions(libpackager PUBLIC SHAKA_IMPLEMENTATION)
+
+  add_library(libpackager_ext_shared SHARED ${libpackager_ext_sources})
+  target_link_libraries(libpackager_ext_shared ${libpackager_ext_deps})
+  target_compile_definitions(libpackager_ext_shared PUBLIC SHAKA_IMPLEMENTATION)
+  add_library(libpackager_ext ALIAS libpackager_ext_shared)
 else()
   add_library(libpackager STATIC ${libpackager_sources})
   target_link_libraries(libpackager ${libpackager_deps})
@@ -135,9 +187,12 @@ endif()
 if(NOT MSVC)
   # The "lib" prefix is implied outside of MSVC.
   set_property(TARGET libpackager PROPERTY OUTPUT_NAME packager)
+  set_property(TARGET libpackager_ext_shared PROPERTY OUTPUT_NAME packager_ext)
 else()
   set_property(TARGET libpackager PROPERTY OUTPUT_NAME libpackager)
+  set_property(TARGET libpackager_ext_shared PROPERTY OUTPUT_NAME libpackager_ext)
 endif()
+
 
 add_executable(packager
   app/ad_cue_generator_flags.cc
@@ -152,6 +207,8 @@ add_executable(packager
   app/mpd_flags.h
   app/muxer_flags.cc
   app/muxer_flags.h
+  app/packager_main_def.cc
+  app/packager_main_def.h
   app/packager_main.cc
   app/playready_key_encryption_flags.cc
   app/playready_key_encryption_flags.h
@@ -178,6 +235,7 @@ target_link_libraries(packager
   hex_bytes_flags
   libpackager
   license_notice
+  nlohmann_json
   string_utils
   ${EXTRA_EXE_LIBRARIES}
 )
@@ -260,7 +318,7 @@ install(TARGETS mpd_generator packager)
 # The static library isn't usable as a standalone because it doesn't include
 # its static dependencies (zlib, absl, etc).
 if(BUILD_SHARED_LIBS)
-  install(TARGETS libpackager)
+  install(TARGETS libpackager libpackager_ext_shared)
   install(DIRECTORY ../include/packager
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/packager.pc

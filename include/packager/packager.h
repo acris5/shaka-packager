@@ -89,7 +89,7 @@ struct StreamDescriptor {
   /// Input/source media file path or network stream URL. Required.
   std::string input;
 
-  /// Stream selector, can be `audio`, `video`, `text` or a zero based stream
+  /// Stream selector, can be `audio`, `video`, `text`, `scte35` or a zero based stream
   /// index. Required.
   std::string stream_selector;
 

@@ -32,6 +32,7 @@ void MultiCodecMuxerListener::OnMediaStart(const MuxerOptions& muxer_options,
                                          time_scale, container_type);
   }
   // We only need |num_codecs| MuxerListeners.
+  LOG(INFO)<<"MultiCodecMuxerListener::OnMediaStart: resize: "<<num_codecs;
   LimitNumOfMuxerListners(num_codecs);
 }
 

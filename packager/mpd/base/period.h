@@ -13,6 +13,7 @@
 #include <map>
 #include <optional>
 
+#include <packager/mpd/base/event_stream.h>
 #include <packager/mpd/base/adaptation_set.h>
 #include <packager/mpd/base/media_info.pb.h>
 #include <packager/mpd/base/xml/xml_node.h>
@@ -42,6 +43,8 @@ class Period {
   virtual AdaptationSet* GetOrCreateAdaptationSet(
       const MediaInfo& media_info,
       bool content_protection_in_adaptation_set);
+
+  virtual EventStream* GetOrCreateEventStream();
 
   /// Generates <Period> xml element with its child AdaptationSet elements.
   /// @return On success returns a non-NULL scoped_xml_ptr. Otherwise returns a
@@ -77,7 +80,8 @@ class Period {
   Period(uint32_t period_id,
          double start_time_in_seconds,
          const MpdOptions& mpd_options,
-         uint32_t* representation_counter);
+         uint32_t* representation_counter,
+         uint32_t* events_counter);
 
  private:
   Period(const Period&) = delete;
@@ -121,8 +125,12 @@ class Period {
   const double start_time_in_seconds_;
   double duration_seconds_ = 0;
   const MpdOptions& mpd_options_;
+
+
   uint32_t* const representation_counter_;
   std::list<std::unique_ptr<AdaptationSet>> adaptation_sets_;
+  uint32_t* const events_counter_;
+  std::unique_ptr<EventStream> event_stream_;
   // AdaptationSets grouped by a specific adaptation set grouping key.
   // AdaptationSets with the same key contain identical parameters except
   // ContentProtection parameters. A single AdaptationSet would be created

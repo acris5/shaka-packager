@@ -36,6 +36,7 @@ Status TsMuxer::InitializeMuxer() {
     }
   }
 
+  LOG(INFO)<<"TsMuxer -- FireOnMediaStartEvent";
   segmenter_.reset(new TsSegmenter(options(), muxer_listener()));
   Status status = segmenter_->Initialize(*streams()[0]);
   FireOnMediaStartEvent();

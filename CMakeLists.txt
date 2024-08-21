@@ -13,7 +13,7 @@ cmake_minimum_required(VERSION 3.24)
 include("packager/policies.cmake")
 
 # Project name.  May not contain spaces.  Versioning is managed elsewhere.
-project(shaka-packager VERSION "")
+project(shaka-packager VERSION "3.5")
 
 # Whether to build a shared libpackager library.  By default, don't.
 option(BUILD_SHARED_LIBS "Build libpackager as a shared library" OFF)

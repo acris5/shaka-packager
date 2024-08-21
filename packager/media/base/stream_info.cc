@@ -27,6 +27,8 @@ std::string StreamTypeToString(StreamType type) {
       return "Audio";
     case kStreamText:
       return "Text";
+    case kStreamSCTE35:
+      return "SCTE35";
   }
 
   NOTIMPLEMENTED() << "Unhandled StreamType with value "

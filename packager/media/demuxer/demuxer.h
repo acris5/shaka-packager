@@ -123,9 +123,12 @@ class Demuxer : public OriginHandler {
                            std::shared_ptr<MediaSample> sample);
   bool NewTextSampleEvent(uint32_t track_id,
                           std::shared_ptr<TextSample> sample);
+  bool NewSCTE35EventEvent(uint32_t track_id,
+                          std::shared_ptr<SCTE35Event> sample);
   // Helper function to push the sample to corresponding stream.
   bool PushMediaSample(uint32_t track_id, std::shared_ptr<MediaSample> sample);
   bool PushTextSample(uint32_t track_id, std::shared_ptr<TextSample> sample);
+   bool PushSCTE35Event(uint32_t track_id, std::shared_ptr<SCTE35Event> sample);
 
   // Read from the source and send it to the parser.
   Status Parse();
@@ -137,6 +140,7 @@ class Demuxer : public OriginHandler {
   // Queued samples received in NewSampleEvent() before ParserInitEvent().
   std::deque<QueuedSample<MediaSample>> queued_media_samples_;
   std::deque<QueuedSample<TextSample>> queued_text_samples_;
+  std::deque<QueuedSample<SCTE35Event>> queued_scte35_events_;
   std::unique_ptr<MediaParser> parser_;
   // TrackId -> StreamIndex map.
   std::map<uint32_t, size_t> track_id_to_stream_index_map_;
