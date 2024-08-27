@@ -209,6 +209,7 @@ bool EsParserTeletext::ParseInternal(const uint8_t* data,
     TextRow row;
     if (ParseDataBlock(pts, data_block, packet_nr, magazine, row)) {
       rows.emplace_back(std::move(row));
+      //std::cout<<"teletext row :"<<row.fragment.body<<" pts: "<<pts<<std::endl;
     }
   }
 
@@ -354,7 +355,7 @@ void EsParserTeletext::SendPending(const uint16_t index, const int64_t pts) {
   TextSettings text_settings;
   std::shared_ptr<TextSample> text_sample;
   std::vector<TextFragment> sub_fragments;
-
+  LOG(INFO) << "Teletext pts: "<<pts<<": " <<pending_rows[0].fragment.body << std::endl;
   if (pending_rows.size() == 1) {
     // This is a single line of formatted text.
     // Propagate row number/2 and alignment
@@ -409,6 +410,7 @@ void EsParserTeletext::SendPending(const uint16_t index, const int64_t pts) {
   text_sample = std::make_shared<TextSample>(
       "", pending_pts, pts, text_settings, TextFragment({}, sub_fragments));
   text_sample->set_sub_stream_index(index);
+ 
   emit_sample_cb_(text_sample);
 
   page_state_.erase(index);
