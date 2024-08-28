@@ -91,6 +91,11 @@ void EsParserSCTE35::Reset() {
   sent_info_ = false;
 }
 
+uint64_t get_adjusted_time(uint64_t pts, uint64_t adjust){
+  uint64_t result = (pts + adjust) & 0x1ffffffff ;
+  LOG(INFO) << "SCTE35 pts: "<<pts<<" adjust: "<<adjust<<" result: "<<result;
+  return result;
+}
 
 bool EsParserSCTE35::ParseInternal(const uint8_t* data,
                                    const size_t size,
@@ -131,7 +136,7 @@ bool EsParserSCTE35::ParseInternal(const uint8_t* data,
                               .time_specified_flag == 1) {
                     event = std::make_shared<SCTE35Event>(
                         h,
-                        objLocal.m_objSpliceInsert.m_spliceT.pts_time,
+                        get_adjusted_time(objLocal.m_objSpliceInsert.m_spliceT.pts_time,objLocal.m_SInfoData.pts_adjustment),
                         objLocal.m_objSpliceInsert.m_breakD.duration);
                     emit_scte35_event_cb_(event);
                     LOG(INFO) << "emit event SCTE35 Out" << std::endl;
@@ -145,7 +150,7 @@ bool EsParserSCTE35::ParseInternal(const uint8_t* data,
                     "scte35spliceinsertIn",
                     objLocal.m_objSpliceInsert.splice_immediate_flag
                         ? pts
-                        : objLocal.m_objSpliceInsert.m_spliceT.pts_time,
+                        : get_adjusted_time(objLocal.m_objSpliceInsert.m_spliceT.pts_time,objLocal.m_SInfoData.pts_adjustment),
                     -1);
                 emit_scte35_event_cb_(event);
                 LOG(INFO) << "emit event SCTE35 In" << std::endl;
