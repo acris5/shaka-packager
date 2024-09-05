@@ -517,18 +517,10 @@ EsParserTeletext::TextRow EsParserTeletext::BuildRow(const uint8_t* data_block,
     if (start_pos == 0 || end_pos != 0) {  // Not between start and end
       continue;
     }
-    switch (next_char) {
-      case '&':
-        next_string.append("&amp;");
-        break;
-      case '<':
-        next_string.append("&lt;");
-        break;
-      default: {
-        const std::string replacement(current_charset_[next_char - 0x20]);
-        next_string.append(replacement);
-      } break;
-    }
+ 
+    const std::string replacement(current_charset_[next_char - 0x20]);
+    next_string.append(replacement);
+    
   }
   if (end_pos == 0) {
     end_pos = kPayloadSize - 1;
