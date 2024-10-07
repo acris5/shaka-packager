@@ -296,7 +296,7 @@ void HlsNotifyMuxerListener::OnCueEvent(int64_t timestamp,
 void HlsNotifyMuxerListener::OnSCTE35Event(int64_t timestamp, int64_t duration,
                                         const std::string& cue_data) {
   // Not using |cue_data| at this moment.
-  hls_notifier_->NotifySCTE35Event(timestamp, duration);
+  hls_notifier_->NotifySCTE35Event(timestamp, duration, cue_data);
 }
 
 bool HlsNotifyMuxerListener::NotifyNewStream() {

@@ -160,12 +160,23 @@ class MediaPlaylist {
   /// Add #EXT-X-PLACEMENT-OPPORTUNITY for mid-roll ads. See
   /// https://support.google.com/dfp_premium/answer/7295798?hl=en.
   virtual void AddPlacementOpportunity();
+  
+  struct Scte35 {
+  uint8_t id;
+  int64_t timestamp;
+  // Negative duration means Cue-in
+  int64_t duration;
+  std::string cue_data;
+};
+  std::list<Scte35> scte35_events_;
+  Scte35 current_Scte35_ = {0, 0, 0, ""};
+  uint8_t last_scte_id = 0;
 
-  virtual void AddScte35Event(int64_t timestamp, int64_t duration);
+  virtual void AddScte35Event(int64_t timestamp, int64_t duration, const std::string& cue_data);
 
-  virtual void AddXCueOut(int64_t duration);
+  virtual void AddXCueOut(Scte35 scte35);
   virtual void AddXCueCont(int64_t duration, float passed);
-  virtual void AddXCueIn();
+  virtual void AddXCueIn(Scte35 scte35);
 
   /// Write the playlist to |file_path|.
   /// This does not close the file.
@@ -239,6 +250,8 @@ class MediaPlaylist {
   }
 
   bool forced_subtitle() const { return forced_subtitle_; }
+
+  bool need_date_time_ = true; //need to use EXT-X-PROGRAM-DATE-TIME + EXT-X-DATERANGE for scte35 events
 
   bool is_dvs() const {
     // HLS Authoring Specification for Apple Devices
@@ -316,14 +329,7 @@ class MediaPlaylist {
   };
   std::list<KeyFrameInfo> key_frames_;
 
-  struct Scte35 {
-  int64_t timestamp;
-  // Negative duration means Cue-in
-  int64_t duration;
-  //std::string cue_data;
-};
-  std::list<Scte35> scte35_events_;
-  Scte35 current_Scte35_ = {0, 0};
+ 
   DISALLOW_COPY_AND_ASSIGN(MediaPlaylist);
 };
 

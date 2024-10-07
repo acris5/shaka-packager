@@ -85,7 +85,7 @@ class HlsNotifier {
   /// @param timestamp is the timestamp of the SCTE35Event.
   /// @param duration is the duration of the SCTE35Event.
   /// @return true on success, false otherwise.
-  virtual bool NotifySCTE35Event(int64_t timestamp, int64_t duration) = 0;
+  virtual bool NotifySCTE35Event(int64_t timestamp, int64_t duration, const std::string& cue_data) = 0;
 
   /// @param stream_id is the value set by NotifyNewStream().
   /// @param key_id is the key ID for the stream.

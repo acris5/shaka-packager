@@ -429,13 +429,13 @@ bool SimpleHlsNotifier::NotifyCueEvent(uint32_t stream_id, int64_t timestamp) {
   return true;
 }
 
-bool SimpleHlsNotifier::NotifySCTE35Event(int64_t timestamp, int64_t duration) {
+bool SimpleHlsNotifier::NotifySCTE35Event(int64_t timestamp, int64_t duration, const std::string& cue_data) {
   absl::MutexLock lock(&lock_);
   LOG(INFO)<<"SimpleHlsNotifier::NotifySCTE35Event notify all streams"<<std::endl;
   for (auto stream_iterator = stream_map_.begin(); stream_iterator != stream_map_.end(); ++stream_iterator) {
     auto& media_playlist = stream_iterator->second->media_playlist;
     LOG(INFO)<<"AddScte35Event to "<<media_playlist->name()<<" "<<media_playlist->file_name()<<std::endl;
-    media_playlist->AddScte35Event(timestamp,duration);
+    media_playlist->AddScte35Event(timestamp,duration,cue_data);
   }
   return true;
 }
