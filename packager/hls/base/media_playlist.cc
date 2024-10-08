@@ -409,9 +409,10 @@ std::string XCueOut::ToString() {
   // #EXT-X-DATERANGE:ID="999",START-DATE="2018-08-22T21:54:00.079Z",PLANNED-DURATION=30.000,SCTE35-OUT=0xFC302500000000000000FFF01405000003E77FEFFE0011FB9EFE002932E00001010100004D192A59
   // #EXT-X-DATERANGE:ID="ad1",CLASS="com.apple.hls.interstitial",START-DATE="2020-01-02T21:55:44.000Z",DURATION=15.0,X-ASSET-URI="http://example.com/ad1.m3u8",X-RESUME-OFFSET=0,X-RESTRICT="SKIP,JUMP",X-COM-EXAMPLE-BEACON=123
   // #EXT-X-DATERANGE:ID="4",CLASS="com.apple.hls.interstitial",START-DATE="2020-01-01T11:00:31.000Z",DURATION=3,X-RESUME-OFFSET=4,X-ASSET-URI="https://example.com/index5.m3u8",X-TIMELINE-OCCUPIES=RANGE
+  //#EXT-X-DATERANGE:ID="ad2",CLASS="com.apple.hls.interstitial",START-DATE="2021-01-04T05:00:10.000Z",DURATION=30,X-ASSET-LIST="https://example.com/asset_list.json",X-RESUME-OFFSET=0,X-TIMELINE-OCCUPIES="RANGE"
   std::string result = need_date_time_? 
     //absl::StrFormat("EXT-X-DATERANGE:ID=\"%d\",START-DATE=\"%s\",PLANNED-DURATION=%.3f,SCTE35-OUT=%s", id_,date_time_,duration_seconds_,scte_data_)
-    absl::StrFormat("EXT-X-DATERANGE:ID=\"%d\",CLASS=\"com.apple.hls.interstitial\",START-DATE=\"%s\",DURATION=%.3f,X-RESUME-OFFSET=%.3f,X-ASSET-URI=\"advert/index.m3u8\",X-TIMELINE-OCCUPIES=RANGE", id_,date_time_,duration_seconds_,duration_seconds_)
+    absl::StrFormat("#EXT-X-DATERANGE:ID=\"%d\",CLASS=\"com.apple.hls.interstitial\",START-DATE=\"%s\",DURATION=%.3f,X-RESUME-OFFSET=%.3f,X-ASSET-URI=\"advert/index.m3u8\",X-TIMELINE-OCCUPIES=RANGE", id_,date_time_,duration_seconds_,duration_seconds_)
     : 
     absl::StrFormat("#EXT-X-CUE-OUT:%.3f", duration_seconds_);
   return result;
@@ -468,7 +469,7 @@ XCueIn::XCueIn( uint8_t id, std::string scte_data, bool need_date_time)
 
 std::string XCueIn::ToString() {
   // #EXT-X-DATERANGE:ID="999",END-DATE="2018-08-22T21:54:30.109Z",DURATION=30.030, SCTE35-IN=0xFC0000425100FFF0140500000300000000E77FEFFE0011FB9EFE0029004D1932E0000100101002A22
-  return need_date_time_? absl::StrFormat("EXT-X-DATERANGE:ID=\"%d\",SCTE35-IN=%s", id_, scte_data_)
+  return need_date_time_? absl::StrFormat("#EXT-X-DATERANGE:ID=\"%d\",SCTE35-IN=%s", id_, scte_data_)
     : "#EXT-X-CUE-IN";
 }
 
