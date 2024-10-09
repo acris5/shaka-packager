@@ -381,7 +381,7 @@ std::string PlacementOpportunityEntry::ToString() {
 
 class XCueOut : public HlsEntry {
  public:
-  XCueOut(float duration_seconds, uint8_t id, std::string scte_data, bool need_date_time);
+  XCueOut(float duration_seconds, uint8_t id, std::string scte_data, std::string date_time);
 
   std::string ToString() override;
 
@@ -389,30 +389,27 @@ class XCueOut : public HlsEntry {
   float duration_seconds_;
   std::string date_time_;
   std::string scte_data_;
-  bool need_date_time_;
   uint8_t id_;
   XCueOut(const XCueOut&) = delete;
   XCueOut& operator=(const XCueOut&) =
       delete;
 };
 
-XCueOut::XCueOut(float duration_seconds, uint8_t id, std::string scte_data, bool need_date_time)
+XCueOut::XCueOut(float duration_seconds, uint8_t id, std::string scte_data, std::string date_time)
     : HlsEntry(HlsEntry::EntryType::kExtCueOut),
     duration_seconds_(duration_seconds),
+    date_time_(date_time),
     scte_data_(scte_data),
-    need_date_time_(need_date_time),
-    id_(id) {
-      date_time_ = time_in_HH_MM_SS_MMM();
-    };
+    id_(id) {};
 
 std::string XCueOut::ToString() {
   // #EXT-X-DATERANGE:ID="999",START-DATE="2018-08-22T21:54:00.079Z",PLANNED-DURATION=30.000,SCTE35-OUT=0xFC302500000000000000FFF01405000003E77FEFFE0011FB9EFE002932E00001010100004D192A59
   // #EXT-X-DATERANGE:ID="ad1",CLASS="com.apple.hls.interstitial",START-DATE="2020-01-02T21:55:44.000Z",DURATION=15.0,X-ASSET-URI="http://example.com/ad1.m3u8",X-RESUME-OFFSET=0,X-RESTRICT="SKIP,JUMP",X-COM-EXAMPLE-BEACON=123
   // #EXT-X-DATERANGE:ID="4",CLASS="com.apple.hls.interstitial",START-DATE="2020-01-01T11:00:31.000Z",DURATION=3,X-RESUME-OFFSET=4,X-ASSET-URI="https://example.com/index5.m3u8",X-TIMELINE-OCCUPIES=RANGE
   //#EXT-X-DATERANGE:ID="ad2",CLASS="com.apple.hls.interstitial",START-DATE="2021-01-04T05:00:10.000Z",DURATION=30,X-ASSET-LIST="https://example.com/asset_list.json",X-RESUME-OFFSET=0,X-TIMELINE-OCCUPIES="RANGE"
-  std::string result = need_date_time_? 
+  std::string result = !date_time_.empty() ? 
     //absl::StrFormat("EXT-X-DATERANGE:ID=\"%d\",START-DATE=\"%s\",PLANNED-DURATION=%.3f,SCTE35-OUT=%s", id_,date_time_,duration_seconds_,scte_data_)
-    absl::StrFormat("#EXT-X-DATERANGE:ID=\"%d\",CLASS=\"com.apple.hls.interstitial\",START-DATE=\"%s\",DURATION=%.3f,X-RESUME-OFFSET=%.3f,X-ASSET-URI=\"advert/index.m3u8\",X-TIMELINE-OCCUPIES=RANGE", id_,date_time_,duration_seconds_,duration_seconds_)
+    absl::StrFormat("#EXT-X-DATERANGE:ID=\"%d\",CLASS=\"com.apple.hls.interstitial\",START-DATE=\"%s\",DURATION=%.3f,X-RESUME-OFFSET=%.3f,X-ASSET-URI=\"advert/index.m3u8\",X-TIMELINE-OCCUPIES=\"RANGE\"", id_, date_time_, duration_seconds_, duration_seconds_)
     : 
     absl::StrFormat("#EXT-X-CUE-OUT:%.3f", duration_seconds_);
   return result;
@@ -633,7 +630,7 @@ void MediaPlaylist::AddPlacementOpportunity() {
 
 void MediaPlaylist::AddXCueOut(Scte35 scte35) {
   LOG(INFO)<<"HLS: XCueOut "<<static_cast< float >(scte35.duration)/90000<<std::endl;
-  entries_.emplace_back(new XCueOut(static_cast< float >(scte35.duration)/90000, scte35.id, scte35.cue_data, need_date_time_));
+  entries_.emplace_back(new XCueOut(static_cast< float >(scte35.duration)/90000, scte35.id, scte35.cue_data, time_in_HH_MM_SS_MMM(-1000*hls_params_.time_shift_buffer_depth)));
 }
 
 void MediaPlaylist::AddXCueCont(int64_t duration, float passed) {
@@ -655,7 +652,7 @@ bool MediaPlaylist::WriteToFile(const std::filesystem::path& file_path) {
   std::string content = CreatePlaylistHeader(
       media_info_, target_duration_, hls_params_.playlist_type, stream_type_,
       media_sequence_number_, discontinuity_sequence_number_,
-      hls_params_.start_time_offset, time_in_HH_MM_SS_MMM(-1000*hls_params_.time_shift_buffer_depth));
+      hls_params_.start_time_offset, time_in_HH_MM_SS_MMM());
 
   for (const auto& entry : entries_)
     absl::StrAppendFormat(&content, "%s\n", entry->ToString().c_str());
