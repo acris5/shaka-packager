@@ -167,9 +167,11 @@ class MediaPlaylist {
   // Negative duration means Cue-in
   int64_t duration;
   std::string cue_data;
+  std::string datetime;
 };
   std::list<Scte35> scte35_events_;
-  Scte35 current_Scte35_ = {0, 0, 0, ""};
+  Scte35 current_Scte35_ = {0, 0, 0, "", ""};
+  Scte35 previous_Scte35_ = {0, 0, 0, "", ""};
   uint8_t last_scte_id = 0;
 
   virtual void AddScte35Event(int64_t timestamp, int64_t duration, const std::string& cue_data);
