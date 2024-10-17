@@ -135,6 +135,31 @@ std::string time_in_HH_MM_SS_MMM(int64_t time_offset = 0) // time offset in mill
     return oss.str();
 }
 
+std::string start_time_in_HH_MM_SS_MMM(int64_t start_time = 0) // start time in milliseconds 
+{
+    using namespace std::chrono;
+
+    // get millisec time
+    std::chrono::time_point<std::chrono::system_clock> now ( std::chrono::milliseconds((int64_t)start_time/90) );  // start_time / 90000 = time in seconds
+
+    // get number of milliseconds for the current second
+    // (remainder after division into seconds)
+    auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
+
+    // convert to std::time_t in order to convert to std::tm (broken time)
+    auto timer = system_clock::to_time_t(now);
+
+    // convert to broken time
+    std::tm bt = *std::localtime(&timer);
+
+    std::ostringstream oss;
+    //<YYYY-MM-DDThh:mm:ss.SSSZ>
+    oss << std::put_time(&bt, "%Y-%m-%dT%H:%M:%S"); // HH:MM:SS
+    oss << '.' << std::setfill('0') << std::setw(3) << ms.count()<<'Z';
+
+    return oss.str();
+}
+
 std::string CreatePlaylistHeader(
     const MediaInfo& media_info,
     int32_t target_duration,
@@ -605,7 +630,8 @@ void MediaPlaylist::AddKeyFrame(int64_t timestamp,
 void MediaPlaylist::AddScte35Event(int64_t timestamp,
                                 int64_t duration, const std::string& cue_data) {
   last_scte_id++;
-  scte35_events_.push_back({last_scte_id, timestamp, duration, cue_data,""});
+  //scte35_events_.push_back({last_scte_id, timestamp, duration, cue_data,""});
+  scte35_events_.push_back({last_scte_id, timestamp, 90*time_scale_, cue_data,""});
 }
 
 
@@ -632,7 +658,7 @@ void MediaPlaylist::AddPlacementOpportunity() {
 
 void MediaPlaylist::AddXCueOut(Scte35 scte35) {
   LOG(INFO)<<"HLS: XCueOut "<<static_cast< float >(scte35.duration)/time_scale_<<std::endl;
-  entries_.emplace_back(new XCueOut(static_cast< float >(scte35.duration)/time_scale_, scte35.id, scte35.cue_data, scte35.datetime));
+  entries_.emplace_back(new XCueOut(static_cast< float >(scte35.duration)/time_scale_, scte35.id, scte35.cue_data, start_time_in_HH_MM_SS_MMM(scte35.timestamp)));
 }
 
 void MediaPlaylist::AddXCueCont(int64_t duration, float passed) {
@@ -650,24 +676,24 @@ bool MediaPlaylist::WriteToFile(const std::filesystem::path& file_path) {
   if (!target_duration_set_) {
     SetTargetDuration(ceil(GetLongestSegmentDuration()));
   }
+  int64_t start_time = 0;
 
+  for (auto iter = entries_.rbegin(); iter != entries_.rend(); ++iter) {
+      if (iter->get()->type() == HlsEntry::EntryType::kExtInf) {
+        SegmentInfoEntry* segment_info =
+            reinterpret_cast<SegmentInfoEntry*>(iter->get());
+        start_time = segment_info->start_time();
+        break;
+      }
+    }
   std::string content = CreatePlaylistHeader(
       media_info_, target_duration_, hls_params_.playlist_type, stream_type_,
       media_sequence_number_, discontinuity_sequence_number_,
-      hls_params_.start_time_offset, time_in_HH_MM_SS_MMM());
-/* 
-  int64_t start_time = 0;
-
- for (auto iter = entries_.rbegin(); iter != entries_.rend(); ++iter) {
-    if (iter->get()->type() == HlsEntry::EntryType::kExtInf) {
-      SegmentInfoEntry* segment_info =
-          reinterpret_cast<SegmentInfoEntry*>(iter->get());
-      start_time = segment_info->start_time();
-      break;
-    }
-  }
+      hls_params_.start_time_offset, start_time_in_HH_MM_SS_MMM(start_time));
+ 
+  
   //for (const auto& entry : entries_)
-  if (previous_Scte35_.duration > 0  && previous_Scte35_.timestamp <= start_time){
+/*  if (previous_Scte35_.duration > 0  && previous_Scte35_.timestamp <= start_time){
     if(previous_Scte35_.timestamp <= static_cast<uint64_t>(start_time) + hls_params_.time_shift_buffer_depth)*/
   if (previous_Scte35_.duration > 0 ) {  
      content += absl::StrFormat("#EXT-X-DATERANGE:ID=\"%d\",CLASS=\"com.apple.hls.interstitial\",START-DATE=\"%s\",DURATION=%.3f,X-RESUME-OFFSET=%.3f,X-ASSET-URI=\"advert/index.m3u8\",X-TIMELINE-OCCUPIES=\"RANGE\"\n",previous_Scte35_.id,previous_Scte35_.datetime,previous_Scte35_.duration/time_scale_,0);
@@ -817,7 +843,8 @@ void MediaPlaylist::AddSegmentInfoEntry(const std::string& segment_file_name,
       if (iter.timestamp <= start_time){
         if (iter.duration >= 0){
           current_Scte35_ = iter;
-          current_Scte35_.datetime = time_in_HH_MM_SS_MMM(1000*hls_params_.time_shift_buffer_depth);
+          //current_Scte35_.datetime = time_in_HH_MM_SS_MMM(1000*hls_params_.time_shift_buffer_depth);
+          current_Scte35_.datetime = start_time_in_HH_MM_SS_MMM(iter.timestamp);
           AddXCueOut(current_Scte35_);
         }
         else {
