@@ -678,7 +678,7 @@ bool MediaPlaylist::WriteToFile(const std::filesystem::path& file_path) {
   }
   int64_t start_time = 0;
 
-  for (auto iter = entries_.rbegin(); iter != entries_.rend(); ++iter) {
+  for (auto iter = entries_.begin(); iter != entries_.end(); ++iter) {
       if (iter->get()->type() == HlsEntry::EntryType::kExtInf) {
         SegmentInfoEntry* segment_info =
             reinterpret_cast<SegmentInfoEntry*>(iter->get());
