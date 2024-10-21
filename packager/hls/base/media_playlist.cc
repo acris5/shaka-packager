@@ -630,8 +630,8 @@ void MediaPlaylist::AddKeyFrame(int64_t timestamp,
 void MediaPlaylist::AddScte35Event(int64_t timestamp,
                                 int64_t duration, const std::string& cue_data) {
   last_scte_id++;
-  //scte35_events_.push_back({last_scte_id, timestamp, duration, cue_data,""});
-  scte35_events_.push_back({last_scte_id, timestamp, 90*time_scale_, cue_data,""});
+  scte35_events_.push_back({last_scte_id, timestamp, duration, cue_data,""});
+  //scte35_events_.push_back({last_scte_id, timestamp, 90*time_scale_, cue_data,""}); // test: generate 90 sec duration adverts
 }
 
 
