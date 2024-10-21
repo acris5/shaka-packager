@@ -30,6 +30,8 @@ struct HlsParams {
   /// The base URL for the Media Playlists and media files listed in the
   /// playlists. This is the prefix for the files.
   std::string base_url;
+  /// The advert URL for scte35 EXT-X-DATERANGE tag.
+  std::string advert_url;
   /// Defines the live window, or the guaranteed duration of the time shifting
   /// buffer for 'live' playlists.
   double time_shift_buffer_depth = 0;

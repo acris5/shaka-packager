@@ -19,6 +19,10 @@ ABSL_FLAG(std::string,
           "The base URL for the Media Playlists and media files listed in "
           "the playlists. This is the prefix for the files.");
 ABSL_FLAG(std::string,
+          hls_advert_url,
+          "",
+          "The advert URL to add scte35 EXT-X-DATERANGE tags with X-ASSET-URI");
+ABSL_FLAG(std::string,
           hls_key_uri,
           "",
           "The key uri for 'identity' and 'com.apple.streamingkeydelivery' "

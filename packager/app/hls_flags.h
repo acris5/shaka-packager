@@ -12,6 +12,7 @@
 
 ABSL_DECLARE_FLAG(std::string, hls_master_playlist_output);
 ABSL_DECLARE_FLAG(std::string, hls_base_url);
+ABSL_DECLARE_FLAG(std::string, hls_advert_url);
 ABSL_DECLARE_FLAG(std::string, hls_key_uri);
 ABSL_DECLARE_FLAG(std::string, hls_playlist_type);
 ABSL_DECLARE_FLAG(int32_t, hls_media_sequence_number);

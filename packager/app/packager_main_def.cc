@@ -532,6 +532,7 @@ std::optional<PackagingParams> GetPackagingParams() {
   hls_params.master_playlist_output =
       absl::GetFlag(FLAGS_hls_master_playlist_output);
   hls_params.base_url = absl::GetFlag(FLAGS_hls_base_url);
+  hls_params.advert_url = absl::GetFlag(FLAGS_hls_advert_url);
   hls_params.key_uri = absl::GetFlag(FLAGS_hls_key_uri);
   hls_params.time_shift_buffer_depth =
       absl::GetFlag(FLAGS_time_shift_buffer_depth);
